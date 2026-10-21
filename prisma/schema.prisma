@@ -1,0 +1,2207 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Plataforma / Tenants ----------
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+// Para separar, en las estadísticas de /platform, lo que es negocio real de
+// lo que no: DEMO son las copias de scripts/seed-demo-pizzeria.ts (ver
+// DEMO_SUBDOMAINS) y PROMOCION una tienda de prueba/cortesía sin intención
+// de pagar. Ninguna de las dos cuenta en getPlatformStats.
+enum TenantCategory {
+  CLIENTE
+  DEMO
+  PROMOCION
+}
+
+enum OrderingMode {
+  WEEKLY_HOURS
+  SCHEDULED_SALES
+}
+
+// Estado de facturación manejado a mano por el super admin — no hay pasarela
+// de pago integrada, esto es solo un registro de "quién pagó y cuándo vence".
+enum BillingStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+// Los planes los define el propio super admin desde /platform/planes — acá
+// no hardcodeamos nombres ni precios reales, son datos de negocio.
+model Plan {
+  id                     String   @id @default(cuid())
+  name                   String   @unique
+  priceMonthly           Decimal
+  priceAnnual            Decimal?
+  trialDays              Int      @default(10)
+  // Módulos contratados. Inmobiliaria queda activa por defecto para
+  // conservar el comportamiento de todos los planes creados antes de que
+  // la plataforma incorporara Consorcios y Postventa.
+  allowRealEstate        Boolean  @default(true)
+  allowConsortium        Boolean  @default(false)
+  allowPostSale          Boolean  @default(false)
+  // Límites opcionales — null significa "sin límite" en esa dimensión.
+  maxPublishedProperties Int?
+  maxProducts            Int?
+  // Habilita la sección de dominio propio en Configuración para las tiendas
+  // en este plan — se puede prender/apagar en cualquier momento sin tocar
+  // código, desde /platform/planes.
+  allowCustomDomain      Boolean  @default(false)
+  // Funciones que ya tenían todos los planes existentes antes de este
+  // toggle — por eso arrancan en `true` (a diferencia de allowCustomDomain,
+  // que es un upsell y arranca en false) y el super admin las apaga por
+  // plan solo si quiere restringirlas.
+  allowServices          Boolean  @default(true)
+  allowStats             Boolean  @default(true)
+  // Habilita el agente de ventas IA en el sitio público del tenant — upsell
+  // nuevo, arranca en false. maxAiMessagesPerMonth acota el gasto real de
+  // la API del modelo (null = sin tope), enforced con un COUNT en vivo
+  // igual que maxPublishedProperties, no un contador aparte.
+  allowAiAgent           Boolean  @default(false)
+  maxAiMessagesPerMonth  Int?
+  description            String?
+  active                 Boolean  @default(true)
+  // Solo un plan a la vez lleva el badge "Más elegido" en la landing
+  // pública — setFeaturedPlan() en /platform/planes se encarga de que
+  // marcar uno desmarque a los demás.
+  featured               Boolean  @default(false)
+  order                  Int      @default(0)
+  createdAt              DateTime @default(now())
+
+  tenants            Tenant[]
+  planChangeRequests Tenant[] @relation("PlanChangeRequest")
+  pendingSignups     User[]   @relation("PendingSignupPlan")
+}
+
+// Cada fila es un cobro que el super admin registró a mano (no un webhook de
+// pasarela) — sirve como historial de "quién pagó qué mes".
+model BillingPayment {
+  id                     String   @id @default(cuid())
+  tenantId               String
+  amount                 Decimal
+  periodStart            DateTime
+  periodEnd              DateTime
+  paidAt                 DateTime @default(now())
+  note                   String?
+  provider               String?
+  providerPaymentId      String?  @unique
+  providerSubscriptionId String?
+  createdAt              DateTime @default(now())
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  resellerCommission ResellerCommission?
+
+  @@index([tenantId])
+}
+
+// Configuración comercial global. Las credenciales no se guardan acá:
+// viven como secretos del servidor. Esto permite editar la política de
+// cobro desde Platform sin exponer llaves capaces de mover dinero.
+model PlatformBillingSettings {
+  id                          String   @id @default("global")
+  enabled                     Boolean  @default(false)
+  currency                    String   @default("ARS")
+  graceDays                   Int      @default(5)
+  accessTokenEnc              String?
+  webhookSecretEnc            String?
+  // Aviso al equipo de Urbi (no a una tienda) cuando se crea una tienda
+  // nueva desde /registro — ver notifyPlatformNewTenant en lib/telegram.ts.
+  platformTelegramBotTokenEnc String?
+  platformTelegramChatId      String?
+  // Envío de mail para TODAS las tiendas (confirmación de pedido, recuperar
+  // contraseña, consultas de servicio) — una sola cuenta de Resend para toda
+  // la plataforma, no SMTP por tenant como antes. resendFromEmail tiene que
+  // ser una casilla del dominio verificado en esa cuenta de Resend; el
+  // nombre que se ve en el "De:" sale del nombre de cada tienda (ver
+  // sendMail en lib/mailer.ts).
+  resendApiKeyEnc             String?
+  resendFromEmail             String?
+  marketingWhatsappEnabled    Boolean  @default(false)
+  marketingWhatsappNumber     String?
+  marketingWhatsappMessage    String?
+  // Instagram de Urbi en el header/footer del sitio de marketing — ver
+  // MarketingSocialProvider, UrbiPublicNav y UrbiPublicFooter.
+  marketingInstagramEnabled   Boolean  @default(false)
+  marketingInstagramUsername  String?
+  // Sección "armamos tu tienda por vos" de la landing — precio y pasos
+  // editables sin tocar código, independientes de los planes de suscripción.
+  // Arranca en false a propósito: recién se prende desde /platform/configuracion
+  // una vez que el super admin cargó precio y pasos reales — mostrarla antes
+  // con $0 y sin pasos se vería rota en la landing pública.
+  setupServiceEnabled         Boolean  @default(false)
+  setupServicePrice           Decimal  @default(0)
+  setupServiceSteps           String[] @default([])
+  updatedAt                   DateTime @updatedAt
+}
+
+model BillingWebhookEvent {
+  id          String    @id @default(cuid())
+  eventKey    String    @unique
+  topic       String
+  resourceId  String
+  status      String
+  error       String?
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+}
+
+// ---------- Programa de revendedores ----------
+
+// Fila única (id fijo) con las condiciones del bono por activación. Editable
+// desde /platform — y estos mismos valores son los que se muestran en la
+// página pública de /revendedores, para que nunca queden desincronizados.
+model ResellerSettings {
+  id                    String   @id @default("global")
+  activationBonusAmount Decimal  @default(0)
+  activationBonusDays   Int      @default(60)
+  // Días desde que se genera una comisión (recurrente o bono) hasta que hay
+  // que pagarla. Es el mismo plazo para todos los tipos — el reloj arranca
+  // cuando la fila de ResellerCommission se crea, no antes.
+  commissionPayoutDays  Int      @default(30)
+  updatedAt             DateTime @updatedAt
+}
+
+// Escalones de comisión: "desde tantas tiendas activas, tal porcentaje".
+// Se editan libremente desde /platform — cuantos se quiera.
+model ResellerCommissionTier {
+  id              String   @id @default(cuid())
+  minActiveStores Int      @unique
+  percent         Decimal
+  createdAt       DateTime @default(now())
+}
+
+enum ResellerCommissionType {
+  RECURRING
+  ACTIVATION_BONUS
+}
+
+enum ResellerCommissionStatus {
+  PENDING
+  PAID
+}
+
+// Una fila por cada comisión que un revendedor ganó — recurrente (atada a
+// un cobro real de BillingPayment) o el bono de activación (uno por
+// tienda, una sola vez). El super admin las marca pagadas a mano cuando de
+// verdad transfiere la plata, igual que ya hace con los cobros de tiendas.
+model ResellerCommission {
+  id             String                   @id @default(cuid())
+  resellerId     String
+  tenantId       String
+  type           ResellerCommissionType
+  amount         Decimal
+  // Null en el bono de activación — ahí no aplica un % sobre nada.
+  percentApplied Decimal?
+  status         ResellerCommissionStatus @default(PENDING)
+  createdAt      DateTime                 @default(now())
+  paidAt         DateTime?
+
+  // Solo en RECURRING — el cobro puntual que generó esta comisión.
+  billingPaymentId String?         @unique
+  billingPayment   BillingPayment? @relation(fields: [billingPaymentId], references: [id])
+
+  reseller User   @relation("ResellerCommissions", fields: [resellerId], references: [id])
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([resellerId])
+  @@index([tenantId])
+}
+
+// Códigos creados por la plataforma para bonificar el alta de una tienda.
+// El beneficio se consume recién cuando el Tenant se crea, no al escribir
+// el código, para que los registros abandonados no gasten usos.
+model PromotionCode {
+  id             String    @id @default(cuid())
+  code           String    @unique
+  description    String?
+  durationMonths Int       @default(12)
+  maxUses        Int?
+  usedCount      Int       @default(0)
+  active         Boolean   @default(true)
+  validUntil     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  pendingUsers User[]                @relation("PendingPromotion")
+  redemptions  PromotionRedemption[]
+}
+
+model PromotionRedemption {
+  id              String   @id @default(cuid())
+  promotionCodeId String
+  tenantId        String   @unique
+  startsAt        DateTime
+  endsAt          DateTime
+  createdAt       DateTime @default(now())
+
+  promotionCode PromotionCode @relation(fields: [promotionCodeId], references: [id])
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+
+  @@index([promotionCodeId])
+}
+
+model Tenant {
+  id                   String         @id @default(cuid())
+  subdomain            String         @unique
+  status               TenantStatus   @default(ACTIVE)
+  // Manual, tildado desde /platform/tiendas/[tenantId] — no se infiere solo.
+  category             TenantCategory @default(CLIENTE)
+  orderingMode         OrderingMode   @default(SCHEDULED_SALES)
+  ordersManuallyClosed Boolean        @default(false)
+  // Apagado general de la tienda desde el admin — independiente del modo y
+  // de los horarios/fechas configurados. Mientras esté en false, el
+  // storefront muestra "Tienda cerrada" y no se puede hacer ningún pedido.
+  storeOpen            Boolean        @default(true)
+  createdAt            DateTime       @default(now())
+
+  // Datos que se cargan una vez en el alta (/registro/datos) — para vos
+  // como plataforma, no para mostrarle al público. Ciudad y provincia sí
+  // son de cara al público y por eso van como Settings (store_city,
+  // store_province), igual que la dirección, editables después desde
+  // /admin/configuracion.
+  businessCategory String?
+  referralSource   String?
+
+  planId String?
+  plan   Plan?   @relation(fields: [planId], references: [id])
+
+  // Pedido del dueño de la tienda para cambiar de plan — se pide desde
+  // /admin/configuracion, lo ve y aplica el super admin a mano desde
+  // /platform (sigue sin pasarela de pago real, esto NO cambia el plan
+  // solo). null cuando no hay ningún pedido pendiente.
+  requestedPlanId            String?
+  requestedPlan              Plan?                @relation("PlanChangeRequest", fields: [requestedPlanId], references: [id])
+  requestedPlanAt            DateTime?
+  billingStatus              BillingStatus        @default(TRIAL)
+  trialEndsAt                DateTime?
+  nextBillingDate            DateTime?
+  billingNotes               String?
+  billingCycle               BillingCycle?
+  providerSubscriptionId     String?              @unique
+  providerSubscriptionStatus String?
+  subscriptionStartedAt      DateTime?
+  subscriptionSyncedAt       DateTime?
+  billingPayments            BillingPayment[]
+  promotionRedemption        PromotionRedemption?
+
+  // Dominio propio (ej: pedidos.mimarca.com) — solo disponible si el plan de
+  // la tienda tiene allowCustomDomain. El token se le pide al dueño del
+  // dominio como registro TXT para probar que es suyo antes de servir la
+  // tienda ahí; una vez verificado, customDomain empieza a resolver tenant
+  // igual que el subdominio.
+  customDomain         String? @unique
+  customDomainToken    String?
+  customDomainVerified Boolean @default(false)
+
+  deals                  EstateDeal[]
+  valuations             EstateValuation[]
+  contacts               EstateContact[]
+  properties             EstateProperty[]
+  developments           EstateDevelopment[]
+  developmentInquiries   EstateDevelopmentInquiry[]
+  inquiries              EstateInquiry[]
+  visits                 EstateVisit[]
+  contracts              EstateContract[]
+  charges                EstateCharge[]
+  receipts               EstateReceipt[]
+  maintenance            EstateMaintenance[]
+  buildings              EstateBuilding[]
+  auditEvents            EstateAuditEvent[]
+  propertyFavorites      EstatePropertyFavorite[]
+  estatePageViews        EstatePageView[]
+  propertyTypes          EstatePropertyType[]
+  cities                 EstateCity[]
+  neighborhoods          EstateNeighborhood[]
+  contractTypes          EstateContractType[]
+  propertyDestinations   EstatePropertyDestination[]
+  agents                 EstateAgent[]
+  contractDocuments      EstateContractDocument[]
+  contractHandoverPhotos EstateContractHandoverPhoto[]
+  contractGuarantors     EstateContractGuarantor[]
+  contractChargeConcepts EstateContractChargeConcept[]
+  rentIndexValues        EstateRentIndexValue[]
+  billingSuggestions     EstateBillingSuggestion[]
+  users                  User[]                        @relation("TenantUsers")
+
+  // Revendedor que trajo esta tienda (si vino de un código) — solo para
+  // calcular a quién corresponde la comisión de sus cobros. No cambia nada
+  // de cara al dueño de la tienda.
+  referredByResellerId String?
+  referredByReseller   User?                     @relation("TenantReferredBy", fields: [referredByResellerId], references: [id])
+  resellerCommissions  ResellerCommission[]
+  categories           ProductCategory[]
+  products             Product[]
+  stockGroups          StockGroup[]
+  services             Service[]
+  serviceInquiries     ServiceInquiry[]
+  deliveryDates        DeliveryDate[]
+  storeClosures        StoreClosure[]
+  weeklyScheduleRules  WeeklyScheduleRule[]
+  paymentMethods       PaymentMethodConfig[]
+  fulfillmentMethods   FulfillmentMethodConfig[]
+  pickupSlots          PickupSlot[]
+  orders               Order[]
+  settings             Settings[]
+  aboutMedia           AboutMedia[]
+  stockMovements       StockMovement[]
+  emailLogs            EmailLog[]
+  whatsappLogs         WhatsappLog[]
+  domainRequests       DomainRequest[]
+  aiConversations      EstateAiConversation[]
+
+  postSaleDevelopments     PostSaleDevelopment[]
+  postSaleUnits            PostSaleUnit[]
+  postSaleContacts         PostSaleContact[]
+  postSaleUnitMembers      PostSaleUnitMember[]
+  postSaleSections         PostSaleSection[]
+  postSaleRubros           PostSaleRubro[]
+  postSaleManagers         PostSaleManager[]
+  postSaleManagerBuildings PostSaleManagerBuilding[]
+  postSaleProviders        PostSaleProvider[]
+  postSaleClaims           PostSaleClaim[]
+}
+
+enum DomainRequestStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+}
+
+// Cuando el dueño de una tienda no quiere ocuparse él mismo del trámite del
+// dominio propio (comprarlo, darlo de alta, cargar los registros DNS) pide
+// que Urbi lo haga por él — ver el botón "Lo hacemos por vos" en Dominio
+// propio. Sin automatización de compra: el super admin la gestiona a mano
+// desde /platform/dominios.
+model DomainRequest {
+  id            String              @id @default(cuid())
+  tenantId      String
+  contactName   String
+  contactEmail  String
+  contactPhone  String?
+  domainOptions String[]
+  notes         String?
+  status        DomainRequestStatus @default(PENDING)
+  createdAt     DateTime            @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+// Cada entrada a /demo (ver src/app/demo/) queda registrada acá para medir
+// interés real en el producto: quién probó, con qué copia y cuándo. No se
+// ata a un Tenant — las tiendas demo son compartidas (ver DEMO_SUBDOMAINS)
+// y se reciclan entre visitantes distintos.
+model DemoVisit {
+  id        String   @id @default(cuid())
+  email     String
+  subdomain String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Contador liviano de visitas al sitio de marketing (urbi.com.ar sin
+// subdominio, ver Home en src/app/page.tsx) — a diferencia de DemoVisit,
+// acá no se pide ningún dato de contacto: es solo tráfico anónimo, para
+// tener una idea de volumen, no de quién es.
+model SiteVisit {
+  id        String   @id @default(cuid())
+  path      String
+  // Dominio/URL de donde vino (header Referer) — null cuando entró directo
+  // (tipeó la URL, o el navegador no manda el header). Ver lib/traffic-source.ts
+  // para cómo se agrupa en "Google", "Instagram", "Directo", etc.
+  referrer  String?
+  // Crudo, tal cual lo manda el navegador — se parsea recién al mostrar las
+  // estadísticas (lib/user-agent.ts), así un cambio en cómo se categoriza no
+  // pierde datos ya guardados.
+  userAgent String?
+  // Cookie anónima de un año (ver proxy.ts) — permite distinguir "visitas
+  // totales" de "visitantes distintos" sin pedir ningún dato personal.
+  visitorId String?
+  // Para país/ciudad (lib/ip-geo.ts, contra la base local GeoLite2-City —
+  // nunca sale de nuestro servidor). Es el único dato acá que identifica
+  // de verdad, por eso no se muestra crudo en ningún lado, solo agregado.
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Historial del bot de ventas (src/lib/sales-bot.ts) — una fila por
+// conversación, para poder revisarlas después desde /platform/chats.
+// contactName/contactPhone quedan null hasta que la persona los deja
+// (needsHuman en true, ver askSalesBot) para que un humano la contacte.
+model SalesBotConversation {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  needsHuman   Boolean  @default(false)
+  contactName  String?
+  contactPhone String?
+  // null = charla genérica de preguntas. "SETUP_SERVICE" = entró desde el
+  // botón "Armamos tu tienda por vos" de la landing — para distinguirlas
+  // en /platform/chats.
+  topic        String?
+
+  messages SalesBotMessage[]
+
+  @@index([createdAt])
+}
+
+model SalesBotMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String
+  text           String
+  createdAt      DateTime @default(now())
+
+  conversation SalesBotConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+// ---------- Auth ----------
+
+enum Role {
+  AGENT
+  CUSTOMER
+  ADMIN
+  SUPER_ADMIN
+  // Socio comercial: trae tiendas nuevas con su código y cobra comisión.
+  // Vive en el mismo espacio tenantId null que el super admin y quien se
+  // está registrando todavía sin tienda (ver getUserByEmail en
+  // lib/auth-adapter.ts, que ya filtra por role ahí).
+  RESELLER
+}
+
+model User {
+  estateAgent      EstateAgent?
+  postSaleManager  PostSaleManager?
+  postSaleProvider PostSaleProvider?
+  id               String            @id @default(cuid())
+  tenantId         String?
+  name             String?
+  email            String
+  emailVerified    DateTime?
+  image            String?
+  phone            String?
+  address          String?
+  passwordHash     String?
+  role             Role              @default(CUSTOMER)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  // Mientras un usuario se está registrando en urbi.com.ar y todavía no tiene
+  // tienda (tenantId null): plan elegido y marca de "ya pagó" el onboarding.
+  // Se limpian cuando /registro/datos crea el Tenant y lo pasa a ADMIN.
+  pendingPlanId             String?
+  pendingPlan               Plan?          @relation("PendingSignupPlan", fields: [pendingPlanId], references: [id])
+  onboardingPaidAt          DateTime?
+  pendingBillingCycle       BillingCycle?
+  pendingSubscriptionId     String?        @unique
+  pendingSubscriptionStatus String?
+  pendingPromotionCodeId    String?
+  pendingPromotionCode      PromotionCode? @relation("PendingPromotion", fields: [pendingPromotionCodeId], references: [id])
+
+  // Código propio de un revendedor para repartir — se genera al elegir "ser
+  // socio" en /registro, único, se usa en la URL del QR
+  // (/registro?ref=CODIGO). Ser revendedor es tener este código, NO un rol
+  // aparte: un CUSTOMER sin tienda todavía o un ADMIN de su propia tienda
+  // pueden tenerlo por igual (ver lib/require-reseller.ts).
+  referralCode String? @unique
+
+  // Se marca acá en vez de borrar referralCode al desactivar — así el
+  // historial de comisiones sigue apareciendo en /platform/revendedores en
+  // vez de desaparecer, y el código no queda libre para que otra persona
+  // lo reclame.
+  resellerDeactivatedAt DateTime?
+
+  // Código de un revendedor que alguien trae consigo mientras todavía se
+  // está registrando (llegó por /registro?ref=CODIGO, o lo tipeó a mano) —
+  // se consume recién al crear la tienda, ahí pasa a Tenant.referredByResellerId.
+  pendingReferralCode String?
+
+  tenant Tenant? @relation("TenantUsers", fields: [tenantId], references: [id])
+
+  // Tiendas que este revendedor trajo (role RESELLER) — no confundir con
+  // `tenant` de arriba, que es la tienda PROPIA de un admin/cliente.
+  referredTenants     Tenant[]             @relation("TenantReferredBy")
+  resellerCommissions ResellerCommission[] @relation("ResellerCommissions")
+
+  accounts           Account[]
+  sessions           Session[]
+  orders             Order[]
+  whatsappLogs       WhatsappLog[]
+  favoriteProperties EstatePropertyFavorite[]
+
+  // Portal del inquilino (Etapa 2) — un User con contactId es un inquilino
+  // con acceso a /mi-alquiler, no un admin ni un cliente de la tienda. Se
+  // crea por auto-registro (email + DNI cruzados contra EstateContact, ver
+  // activatePortalAccount) una vez que la inmobiliaria habilitó el contacto
+  // (EstateContact.portalEnabled). FK simple sin compuesta con tenantId,
+  // mismo criterio que `tenant` arriba — el chequeo de que el contacto sea
+  // del mismo tenant se hace en la acción, no en la base.
+  contactId     String?        @unique
+  estateContact EstateContact? @relation(fields: [contactId], references: [id])
+
+  // Portal del propietario/inquilino de Posventa — mismo criterio que
+  // contactId de arriba, pero contra PostSaleContact (universo de contactos
+  // separado, no se mezcla con EstateContact).
+  postSaleContactId String?          @unique
+  postSaleContact   PostSaleContact? @relation(fields: [postSaleContactId], references: [id])
+
+  @@unique([tenantId, email])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  // Copiado del User al vincular la cuenta — permite que la misma cuenta de
+  // Google se vincule a un usuario distinto por cada tienda (tenant), en vez
+  // de compartir un solo User global entre tiendas distintas.
+  tenantId          String?
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Una fila por intento fallido de una acción sensible (login, registro,
+// recuperar contraseña). Se cuentan los de una misma `key` dentro de una
+// ventana de tiempo para frenar fuerza bruta. Va en la base y no en memoria
+// a propósito: sobrevive reinicios y sirve aunque corran varios procesos
+// de Next detrás de Nginx. Ver lib/rate-limit.ts.
+model RateLimitAttempt {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}
+
+// ---------- Catálogo ----------
+
+model ProductCategory {
+  id       String    @id @default(cuid())
+  tenantId String
+  name     String
+  icon     String?
+  active   Boolean   @default(true)
+  products Product[]
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, name])
+}
+
+model Product {
+  id           String   @id @default(cuid())
+  tenantId     String
+  categoryId   String
+  name         String
+  description  String?
+  active       Boolean  @default(true)
+  featured     Boolean  @default(false)
+  // Pausa rápida sin fecha ni cantidad, solo tiene efecto en modo
+  // WEEKLY_HOURS (delivery del día) — en SCHEDULED_SALES manda el stock
+  // por fecha en su lugar.
+  soldOutToday Boolean  @default(false)
+  // Para productos "a pedido" (catering, encargos grandes, etc.) donde el
+  // precio varía por consulta — oculta el precio y el carrito, y en su
+  // lugar muestra un botón de WhatsApp. Las variantes siguen existiendo
+  // para no romper el modelo, pero su precio no se le muestra al cliente.
+  contactToBuy Boolean  @default(false)
+  tags         String[] @default([])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id])
+  category ProductCategory  @relation(fields: [categoryId], references: [id])
+  variants ProductVariant[]
+  images   ProductImage[]
+
+  @@index([tenantId])
+}
+
+// Pozo de stock: puede tener un solo miembro (stock individual de esa
+// variante) o varios (compartido entre variantes de un mismo producto, o
+// incluso de productos distintos — ej: "Pizzas grandes" repartido entre
+// todos los gustos que vienen en tamaño grande).
+model StockGroup {
+  id                   String  @id @default(cuid())
+  tenantId             String
+  name                 String
+  defaultStockQuantity Int?
+  // true cuando lo creó el sistema solo, al vuelo, para el pozo propio de
+  // una variante ("__solo__"/"__siblings__" en resolveVariantStockGroupId)
+  // — no algo que el dueño de la tienda armó a mano en "Grupos de stock".
+  // Sirve para ocultarlos del selector "Compartir con...": antes ese
+  // selector filtraba por cantidad de miembros (2+), pero eso hacía que un
+  // grupo recién creado a mano, todavía con 0 miembros, tampoco apareciera
+  // — imposible de elegir la primera vez.
+  isIndividual         Boolean @default(false)
+
+  tenant         Tenant            @relation(fields: [tenantId], references: [id])
+  variants       ProductVariant[]
+  stock          StockGroupStock[]
+  stockMovements StockMovement[]
+
+  @@unique([tenantId, name])
+}
+
+model ProductVariant {
+  id           String  @id @default(cuid())
+  productId    String
+  stockGroupId String
+  gusto        String?
+  tamano       String?
+  sku          String?
+  price        Decimal @db.Decimal(10, 2)
+  active       Boolean @default(true)
+  order        Int     @default(0)
+
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stockGroup StockGroup  @relation(fields: [stockGroupId], references: [id])
+  orderItems OrderItem[]
+
+  @@index([stockGroupId])
+}
+
+model ProductImage {
+  id        String @id @default(cuid())
+  productId String
+  url       String
+  order     Int    @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Servicios cotizados por presupuesto ----------
+
+enum ServiceFieldType {
+  TEXT
+  TEXTAREA
+  EMAIL
+  PHONE
+  NUMBER
+  DATE
+  SELECT
+}
+
+model Service {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  title              String
+  description        String
+  descriptionColumns Boolean  @default(false)
+  formTitle          String
+  submitLabel        String   @default("Enviar consulta")
+  active             Boolean  @default(true)
+  order              Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id])
+  fields    ServiceField[]
+  images    ServiceImage[]
+  inquiries ServiceInquiry[]
+
+  @@index([tenantId])
+}
+
+model ServiceField {
+  id        String           @id @default(cuid())
+  serviceId String
+  label     String
+  type      ServiceFieldType @default(TEXT)
+  required  Boolean          @default(false)
+  options   String[]         @default([])
+  order     Int              @default(0)
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId, order])
+}
+
+model ServiceImage {
+  id        String @id @default(cuid())
+  serviceId String
+  url       String
+  order     Int    @default(0)
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId, order])
+}
+
+enum ServiceInquiryStatus {
+  NEW
+  IN_PROGRESS
+  QUOTED
+  RESPONDED
+  ACCEPTED
+  REJECTED
+  CLOSED
+}
+
+model ServiceInquiry {
+  id                String               @id @default(cuid())
+  tenantId          String
+  serviceId         String?
+  serviceTitle      String
+  answers           Json
+  status            ServiceInquiryStatus @default(NEW)
+  quotedAmount      Decimal?             @db.Decimal(12, 2)
+  internalNotes     String?
+  telegramSent      Boolean              @default(false)
+  emailSent         Boolean              @default(false)
+  notificationError String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  tenant  Tenant                @relation(fields: [tenantId], references: [id])
+  service Service?              @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  events  ServiceInquiryEvent[]
+
+  @@index([tenantId, status, createdAt])
+  @@index([serviceId])
+}
+
+model ServiceInquiryEvent {
+  id           String               @id @default(cuid())
+  inquiryId    String
+  status       ServiceInquiryStatus
+  quotedAmount Decimal?             @db.Decimal(12, 2)
+  notes        String?
+  createdAt    DateTime             @default(now())
+
+  inquiry ServiceInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId, createdAt])
+}
+
+// ---------- Fechas de entrega y stock ----------
+
+enum DeliveryDateStatus {
+  OPEN
+  CLOSED
+  EXPIRED
+}
+
+// Cómo se maneja el stock para una fecha puntual: BY_GROUP usa los pozos
+// de cada variante (StockGroupStock — individuales o compartidos, según
+// cómo esté armado el catálogo); UNLIMITED no trackea nada, todo
+// disponible siempre.
+enum DateStockMode {
+  BY_GROUP
+  UNLIMITED
+}
+
+enum StockMovementReason {
+  SALE // un pedido consumió stock
+  RESTOCK // un pedido se canceló/borró y liberó lo que había consumido
+  ADJUSTMENT // el admin cambió el tope disponible a mano
+}
+
+model DeliveryDate {
+  id                    String             @id @default(cuid())
+  tenantId              String
+  date                  DateTime
+  orderOpenAt           DateTime?
+  cutoffAt              DateTime?
+  capacity              Int?
+  status                DeliveryDateStatus @default(OPEN)
+  stockMode             DateStockMode      @default(BY_GROUP)
+  notes                 String?
+  createdAt             DateTime           @default(now())
+  // Antes de que abra el pedido (orderOpenAt en el futuro), el storefront
+  // por default oculta todo y solo avisa cuándo abrimos. Con esto en true
+  // deja ver el catálogo igual — sin poder agregar al carrito, cada
+  // producto muestra la fecha de apertura en vez del botón "Agregar".
+  showCatalogBeforeOpen Boolean            @default(false)
+
+  tenant          Tenant             @relation(fields: [tenantId], references: [id])
+  stockGroupStock StockGroupStock[]
+  orders          Order[]
+  pickupSlots     PickupSlot[]
+  stockMovements  StockMovement[]
+  costs           DeliveryDateCost[]
+
+  @@index([tenantId])
+}
+
+// Costos sueltos cargados a mano para una fecha puntual (ej: ingredientes,
+// delivery, alquiler del local ese día) — opcional, se van agregando de a
+// uno. Sirve para sacar el resultado neto (ventas - costos) en Estadísticas.
+model DeliveryDateCost {
+  id             String   @id @default(cuid())
+  deliveryDateId String
+  label          String
+  amount         Decimal  @db.Decimal(10, 2)
+  createdAt      DateTime @default(now())
+
+  deliveryDate DeliveryDate @relation(fields: [deliveryDateId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryDateId])
+}
+
+// Modo "horario semanal": un día de la semana habilitado, con 1 o 2 franjas
+// (WeeklyScheduleWindow) de pedido + entrega/retiro (ej: mediodía y noche).
+model WeeklyScheduleRule {
+  id       String  @id @default(cuid())
+  tenantId String
+  weekday  Int
+  enabled  Boolean @default(true)
+
+  tenant  Tenant                 @relation(fields: [tenantId], references: [id])
+  windows WeeklyScheduleWindow[]
+
+  @@unique([tenantId, weekday])
+}
+
+model WeeklyScheduleWindow {
+  id               String @id @default(cuid())
+  ruleId           String
+  order            Int    @default(0)
+  orderOpenTime    String
+  orderCloseTime   String
+  fulfillmentStart String
+  fulfillmentEnd   String
+
+  rule WeeklyScheduleRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+}
+
+// ---------- Entrega (delivery / retiro) ----------
+
+enum FulfillmentType {
+  DELIVERY
+  PICKUP
+}
+
+model FulfillmentMethodConfig {
+  id       String          @id @default(cuid())
+  tenantId String
+  type     FulfillmentType
+  enabled  Boolean         @default(false)
+  config   Json?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, type])
+}
+
+model PickupSlot {
+  id             String  @id @default(cuid())
+  tenantId       String
+  deliveryDateId String?
+  label          String
+  order          Int     @default(0)
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  deliveryDate DeliveryDate? @relation(fields: [deliveryDateId], references: [id], onDelete: Cascade)
+  orders       Order[]
+
+  @@index([tenantId])
+  @@index([deliveryDateId])
+}
+
+model StockGroupStock {
+  id                String @id @default(cuid())
+  stockGroupId      String
+  deliveryDateId    String
+  quantityAvailable Int? // null = sin límite
+  quantitySold      Int    @default(0)
+
+  stockGroup   StockGroup   @relation(fields: [stockGroupId], references: [id], onDelete: Cascade)
+  deliveryDate DeliveryDate @relation(fields: [deliveryDateId], references: [id], onDelete: Cascade)
+
+  @@unique([stockGroupId, deliveryDateId])
+}
+
+// Historial de cada cambio al stock de una fecha: ventas (al confirmar un
+// pedido), reposiciones (al cancelar/borrar uno) y ajustes manuales del
+// admin. "delta" es el cambio en el remanente (negativo = bajó, positivo =
+// subió); quantityAvailable/quantitySold son la foto resultante.
+model StockMovement {
+  id                String              @id @default(cuid())
+  tenantId          String
+  deliveryDateId    String
+  stockGroupId      String?
+  reason            StockMovementReason
+  delta             Int?
+  quantityAvailable Int?
+  quantitySold      Int
+  note              String?
+  createdAt         DateTime            @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveryDate DeliveryDate @relation(fields: [deliveryDateId], references: [id], onDelete: Cascade)
+  stockGroup   StockGroup?  @relation(fields: [stockGroupId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, deliveryDateId])
+}
+
+model StoreClosure {
+  id        String   @id @default(cuid())
+  tenantId  String
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+// ---------- Medios de pago ----------
+
+enum PaymentMethodType {
+  CASH_ON_DELIVERY
+  TRANSFER
+  MERCADOPAGO
+}
+
+model PaymentMethodConfig {
+  id                String            @id @default(cuid())
+  tenantId          String
+  type              PaymentMethodType
+  enabled           Boolean           @default(false)
+  // Nombre a mostrar en vez del default (ej: "Efectivo" -> "Pago al retirar").
+  label             String?
+  // Solo aplica a CASH_ON_DELIVERY: si está seteado, ese medio de pago
+  // se oculta para quien no tenga al menos esta cantidad de pedidos
+  // previos (los invitados, sin cuenta, nunca lo cumplen).
+  minPreviousOrders Int?
+  config            Json?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, type])
+}
+
+// ---------- Pedidos ----------
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAYMENT_REVIEW
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id                 String            @id @default(cuid())
+  tenantId           String
+  // null = pedido de invitado (sin cuenta) — en ese caso guestName/guestEmail
+  // tienen los datos que cargó a mano en el checkout.
+  userId             String?
+  guestName          String?
+  guestEmail         String?
+  deliveryDateId     String
+  fulfillmentType    FulfillmentType
+  pickupSlotId       String?
+  deliveryAddress    String?
+  deliveryPhone      String
+  status             OrderStatus       @default(PENDING_PAYMENT)
+  paymentMethod      PaymentMethodType
+  subtotal           Decimal           @db.Decimal(10, 2)
+  deliveryFee        Decimal           @default(0) @db.Decimal(10, 2)
+  total              Decimal           @db.Decimal(10, 2)
+  mpPreferenceId     String?
+  mpPaymentId        String?
+  // La manda el checkout y es estable entre reintentos: si el webview corta la
+  // respuesta y el comprador vuelve a confirmar, devolvemos este mismo pedido
+  // en vez de crear uno nuevo. Null en pedidos viejos y en los que carga el admin.
+  idempotencyKey     String?           @unique
+  // Cuándo un admin lo abrió por primera vez — con esto la lista resalta los
+  // pedidos que todavía nadie miró. Null = todavía nadie lo abrió.
+  viewedAt           DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  user         User?          @relation(fields: [userId], references: [id])
+  deliveryDate DeliveryDate   @relation(fields: [deliveryDateId], references: [id])
+  pickupSlot   PickupSlot?    @relation(fields: [pickupSlotId], references: [id], onDelete: SetNull)
+  items        OrderItem[]
+  paymentProof PaymentProof?
+
+  @@index([tenantId])
+}
+
+model OrderItem {
+  id               String  @id @default(cuid())
+  orderId          String
+  productVariantId String
+  quantity         Int
+  unitPrice        Decimal @db.Decimal(10, 2)
+
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
+}
+
+enum PaymentProofStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model PaymentProof {
+  id         String             @id @default(cuid())
+  orderId    String             @unique
+  url        String
+  uploadedAt DateTime           @default(now())
+  status     PaymentProofStatus @default(PENDING)
+  reviewedAt DateTime?
+  reviewedBy String?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Config general ----------
+
+model Settings {
+  tenantId String
+  key      String
+  value    String
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@id([tenantId, key])
+}
+
+// Historial de cada mail que la app intentó mandar (confirmación de
+// pedido, recuperación de contraseña, pruebas desde el admin) — para poder
+// ver desde el panel si efectivamente salieron, sin depender del proveedor
+// SMTP externo.
+model EmailLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  to        String
+  subject   String
+  type      String
+  success   Boolean
+  error     String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+}
+
+// Queda registrado cada vez que un admin le manda un WhatsApp a un cliente
+// desde una campaña — no hay forma de confirmar que WhatsApp lo entregó (el
+// envío pasa por WhatsApp Web, fuera de la app), esto solo marca que el
+// admin abrió el link con el mensaje.
+model WhatsappLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  phone     String
+  message   String
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([userId, createdAt])
+}
+
+// Charla del agente de ventas IA del sitio público de un tenant — distinta
+// de SalesBotConversation (esa es del bot de la landing de Urbi, global de
+// la plataforma, sin tenantId). Acá cada tenant tiene sus propias charlas,
+// con datos reales de sus propiedades vía tool-calling (ver
+// src/lib/ai-agent/).
+model EstateAiConversation {
+  id             String   @id @default(cuid())
+  tenantId       String
+  contactName    String?
+  contactPhone   String?
+  // leadCreated: alguna acción de contacto (consulta o visita) ya se hizo
+  // en esta charla — se usa para el panel/admin. inquiryCreated es más
+  // puntual: evita que crear_consulta duplique la consulta general si el
+  // modelo la llama más de una vez en la misma charla.
+  leadCreated    Boolean  @default(false)
+  inquiryCreated Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  tenant   Tenant            @relation(fields: [tenantId], references: [id])
+  messages EstateAiMessage[]
+
+  @@index([tenantId, createdAt])
+}
+
+model EstateAiMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String // "user" | "model"
+  text           String
+  createdAt      DateTime @default(now())
+
+  conversation EstateAiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+// ---------- Sobre nosotros ----------
+
+enum AboutMediaType {
+  IMAGE
+  VIDEO
+}
+
+model AboutMedia {
+  id        String         @id @default(cuid())
+  tenantId  String
+  type      AboutMediaType
+  url       String
+  order     Int            @default(0)
+  createdAt DateTime       @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+// Inmobiliaria: tablas aditivas; el historial comercial anterior se conserva.
+model EstateContact {
+  id              String                    @id @default(cuid())
+  tenantId        String
+  name            String
+  email           String?
+  phone           String?
+  taxId           String?
+  address         String?
+  birthDate       DateTime?
+  occupation      String?
+  // Portal del inquilino (Etapa 2) — habilitación deliberada de la
+  // inmobiliaria, distinta de tener el rol TENANT. Sin esto en true, el
+  // auto-registro por email + DNI no encuentra el contacto aunque coincidan.
+  portalEnabled      Boolean                   @default(false)
+  // Portal del propietario — mismo criterio que portalEnabled pero para
+  // propietarios. Sin esto en true, el auto-registro por email + DNI no
+  // da acceso aunque el contacto exista como dueño de una propiedad.
+  ownerPortalEnabled Boolean                   @default(false)
+  roles           String[]                  @default([])
+  notes           String                    @default("")
+  archived        Boolean                   @default(false)
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  tenant          Tenant                    @relation(fields: [tenantId], references: [id])
+  deals           EstateDeal[]
+  valuations      EstateValuation[]
+  ownedProperties EstateProperty[]
+  inquiries       EstateInquiry[]
+  visits          EstateVisit[]
+  contracts       EstateContract[]
+  guarantorOf     EstateContractGuarantor[]
+  portalUser      User?
+
+  @@unique([id, tenantId])
+  @@index([tenantId, name])
+}
+
+// Empleados de la inmobiliaria (vendedores), NO clientes — se eligen desde
+// la propiedad como contacto de WhatsApp de cada oferta (venta/alquiler).
+// Entidad separada de EstateContact a propósito: mezclarlos confundiría el
+// listado de clientes con la nómina de personal.
+model EstateAgent {
+  userId            String?         @unique
+  accessEnabled     Boolean         @default(false)
+  // Alcances del panel del agente. Se guarda como JSON para poder agregar
+  // nuevas secciones sin alterar las cuentas existentes.
+  permissions       Json            @default("{}")
+  user              User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  assignedInquiries EstateInquiry[]
+  id                String          @id @default(cuid())
+  tenantId          String
+  name              String
+  email             String?
+  phone             String
+  createdAt         DateTime        @default(now())
+  tenant            Tenant          @relation(fields: [tenantId], references: [id])
+
+  @@unique([id, tenantId])
+  @@index([tenantId, name])
+}
+
+model EstateDevelopment {
+  id                 String                     @id @default(cuid())
+  tenantId           String
+  name               String
+  address            String
+  city               String
+  latitude           Decimal?                   @db.Decimal(10, 7)
+  longitude          Decimal?                   @db.Decimal(10, 7)
+  developer          String                     @default("")
+  stage              String                     @default("PROJECT")
+  progress           Int?
+  estimatedDelivery  String?
+  description        String                     @default("")
+  descriptionColumns Boolean                    @default(false)
+  amenities          String[]                   @default([])
+  financing          String                     @default("")
+  videoUrl           String?
+  formTitle          String                     @default("Consultá por este emprendimiento")
+  submitLabel        String                     @default("Enviar consulta")
+  published          Boolean                    @default(false)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  tenant             Tenant                     @relation(fields: [tenantId], references: [id])
+  properties         EstateProperty[]
+  fields             EstateDevelopmentField[]
+  images             EstateDevelopmentImage[]
+  inquiries          EstateDevelopmentInquiry[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, published, createdAt])
+}
+
+model EstateDevelopmentField {
+  id            String            @id @default(cuid())
+  developmentId String
+  label         String
+  type          ServiceFieldType  @default(TEXT)
+  required      Boolean           @default(false)
+  options       String[]          @default([])
+  order         Int               @default(0)
+  development   EstateDevelopment @relation(fields: [developmentId], references: [id], onDelete: Cascade)
+
+  @@index([developmentId, order])
+}
+
+model EstateDevelopmentImage {
+  id            String            @id @default(cuid())
+  developmentId String
+  url           String
+  order         Int               @default(0)
+  development   EstateDevelopment @relation(fields: [developmentId], references: [id], onDelete: Cascade)
+
+  @@index([developmentId, order])
+}
+
+model EstateDevelopmentInquiry {
+  id                String                          @id @default(cuid())
+  tenantId          String
+  developmentId     String?
+  developmentName   String
+  answers           Json
+  status            ServiceInquiryStatus            @default(NEW)
+  internalNotes     String?
+  telegramSent      Boolean                         @default(false)
+  emailSent         Boolean                         @default(false)
+  notificationError String?
+  createdAt         DateTime                        @default(now())
+  updatedAt         DateTime                        @updatedAt
+  tenant            Tenant                          @relation(fields: [tenantId], references: [id])
+  development       EstateDevelopment?              @relation(fields: [developmentId], references: [id], onDelete: SetNull)
+  events            EstateDevelopmentInquiryEvent[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, status, createdAt])
+  @@index([developmentId])
+}
+
+model EstateDevelopmentInquiryEvent {
+  id        String                   @id @default(cuid())
+  inquiryId String
+  status    ServiceInquiryStatus
+  notes     String?
+  createdAt DateTime                 @default(now())
+  inquiry   EstateDevelopmentInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId, createdAt])
+}
+
+model EstateProperty {
+  id             String                   @id @default(cuid())
+  tenantId       String
+  code           String
+  title          String
+  description    String                   @default("")
+  // Link externo (YouTube, Vimeo, Google Drive, Dropbox, etc.) — se
+  // interpreta y embebe en /propiedades/[id], no se sube el video al
+  // servidor. Ver src/lib/estate/video-embed.ts.
+  videoUrl       String?
+  orientation    String?
+  petsPolicy     String?
+  creditEligible Boolean?
+  floorPlanUrl   String?
+  propertyType   String
+  address        String
+  city           String
+  neighborhood   String                   @default("")
+  bedrooms       Int                      @default(0)
+  bathrooms      Int                      @default(0)
+  garages        Int                      @default(0)
+  coveredArea    Decimal?                 @db.Decimal(12, 2)
+  totalArea      Decimal?                 @db.Decimal(12, 2)
+  // Para el pin en /mapa — opcional, se carga a mano desde el admin (no hay
+  // geocoding automático de la dirección todavía).
+  latitude       Decimal?                 @db.Decimal(10, 7)
+  longitude      Decimal?                 @db.Decimal(10, 7)
+  published      Boolean                  @default(false)
+  featured       Boolean                  @default(false)
+  // Orden manual entre las destacadas (menor = primero) — ver
+  // reorderFeaturedEstateProperties en admin/gestion/actions.ts. Sin efecto
+  // en las que no están destacadas.
+  featuredOrder  Int                      @default(0)
+  ownerId        String?
+  developmentId  String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  tenant         Tenant                   @relation(fields: [tenantId], references: [id])
+  owner          EstateContact?           @relation(fields: [ownerId, tenantId], references: [id, tenantId])
+  development    EstateDevelopment?       @relation(fields: [developmentId, tenantId], references: [id, tenantId])
+  deals          EstateDeal[]
+  listings       EstateListing[]
+  media          EstateMedia[]
+  inquiries      EstateInquiry[]
+  visits         EstateVisit[]
+  contracts      EstateContract[]
+  maintenance    EstateMaintenance[]
+  favorites      EstatePropertyFavorite[]
+  pageViews      EstatePageView[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, code])
+  @@index([tenantId, published, city])
+}
+
+// Navegación anónima del sitio público de cada inmobiliaria. Se mantiene
+// separada de SiteVisit, que mide exclusivamente el sitio comercial de Urbi.
+// visitorId es una cookie aleatoria por host; no identifica a una persona.
+model EstatePageView {
+  id         String          @id @default(cuid())
+  tenantId   String
+  propertyId String?
+  path       String
+  visitorId  String?
+  referrer   String?
+  userAgent  String?
+  createdAt  DateTime        @default(now())
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property   EstateProperty? @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, propertyId, createdAt])
+  @@index([tenantId, path, createdAt])
+}
+
+// Propiedades que un cliente logueado del sitio público marcó con el
+// corazón — separado de EstateContact/EstateInquiry porque no implica
+// ninguna interacción comercial todavía, solo una lista personal.
+model EstatePropertyFavorite {
+  id         String         @id @default(cuid())
+  tenantId   String
+  userId     String
+  propertyId String
+  createdAt  DateTime       @default(now())
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   EstateProperty @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([tenantId, userId])
+}
+
+model EstateListing {
+  id         String         @id @default(cuid())
+  tenantId   String
+  propertyId String
+  operation  String
+  currency   String         @default("USD")
+  price      Decimal?       @db.Decimal(16, 2)
+  // Alquiler temporario (por día) en vez de alquiler mensual — solo tiene
+  // sentido con operation = "RENT"; ver PropertyOfferPriceFields en el admin.
+  temporary  Boolean        @default(false)
+  // Número de WhatsApp para consultas de ESTA oferta puntual (venta o
+  // alquiler pueden ir a un vendedor distinto). Si es null, el frontend no
+  // muestra botón de WhatsApp para esa oferta.
+  whatsapp   String?
+  // El precio se guarda siempre (sirve para estadísticas internas, p.ej.
+  // cuánto se factura por mes en alquileres) aunque el sitio público no lo
+  // muestre — ahí cuando es false se ve "Consultar precio" en su lugar.
+  showPrice  Boolean        @default(true)
+  status     String         @default("AVAILABLE")
+  property   EstateProperty @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([propertyId, operation])
+  @@index([tenantId, status])
+}
+
+// Catálogos por tenant para los selectores del alta de propiedades —
+// editables desde /admin/gestion/categorias en vez de estar fijos en
+// código. Property guarda el nombre como texto plano (no FK) para que
+// borrar o renombrar una categoría no rompa publicaciones existentes.
+model EstatePropertyType {
+  id       String @id @default(cuid())
+  tenantId String
+  name     String
+  order    Int    @default(0)
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model EstateCity {
+  id       String @id @default(cuid())
+  tenantId String
+  name     String
+  order    Int    @default(0)
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model EstateNeighborhood {
+  id       String @id @default(cuid())
+  tenantId String
+  name     String
+  order    Int    @default(0)
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+// Igual criterio que EstatePropertyType: EstateContract guarda el nombre
+// como texto plano, no FK, para que borrar o renombrar acá no rompa
+// contratos ya guardados.
+model EstateContractType {
+  id       String @id @default(cuid())
+  tenantId String
+  name     String
+  order    Int    @default(0)
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model EstatePropertyDestination {
+  id       String @id @default(cuid())
+  tenantId String
+  name     String
+  order    Int    @default(0)
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model EstateMedia {
+  id         String         @id @default(cuid())
+  tenantId   String
+  propertyId String
+  url        String
+  position   Int            @default(0)
+  property   EstateProperty @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId, propertyId])
+}
+
+model EstateInquiry {
+  assignedAgentId String?
+  assignedAgent   EstateAgent?    @relation(fields: [assignedAgentId, tenantId], references: [id, tenantId])
+  searchCriteria  Json?
+  id              String          @id @default(cuid())
+  tenantId        String
+  contactId       String
+  propertyId      String?
+  message         String
+  source          String          @default("ADMIN")
+  status          String          @default("NEW")
+  notes           String          @default("")
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  contact         EstateContact   @relation(fields: [contactId, tenantId], references: [id, tenantId])
+  property        EstateProperty? @relation(fields: [propertyId, tenantId], references: [id, tenantId])
+
+  @@index([tenantId, assignedAgentId])
+  @@index([tenantId, status, createdAt])
+}
+
+model EstateVisit {
+  id         String         @id @default(cuid())
+  tenantId   String
+  propertyId String
+  contactId  String
+  agentName  String
+  startsAt   DateTime
+  endsAt     DateTime
+  status     String         @default("SCHEDULED")
+  notes      String         @default("")
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
+  property   EstateProperty @relation(fields: [propertyId, tenantId], references: [id, tenantId])
+  contact    EstateContact  @relation(fields: [contactId, tenantId], references: [id, tenantId])
+
+  @@index([tenantId, startsAt])
+}
+
+model EstateContract {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  propertyId          String
+  contactId           String
+  reference           String
+  startsAt            DateTime
+  endsAt              DateTime
+  amount              Decimal  @db.Decimal(16, 2)
+  currency            String   @default("ARS")
+  status              String   @default("DRAFT")
+  contractType        String?
+  propertyDestination String?
+
+  // ---- Condiciones de pago (Etapa 2) ----
+  dueDay            Int?
+  graceDays         Int?
+  firstChargePeriod String? // "YYYY-MM", mismo formato que EstateCharge.period — solo guardado, sin generación automática todavía.
+  paymentMethod     String? // TRANSFER | MERCADOPAGO | CASH | OWNER_DIRECT
+  collectedBy       String? // AGENCY | OWNER
+  lateFeeEnabled    Boolean  @default(false)
+  lateFeeType       String? // PERCENTAGE | FIXED
+  lateFeeValue      Decimal? @db.Decimal(16, 2)
+  lateFeeFromDay    Int?
+  lateFeeFrequency  String? // DAILY | MONTHLY | ONCE
+  lateFeeCap        Decimal? @db.Decimal(16, 2)
+
+  // ---- Actualización (Etapa 3) ----
+  updateType      String    @default("NONE") // NONE | IPC | ICL | FIXED_PERCENT | STEPPED | MANUAL | OTHER_INDEX
+  updateFrequency String? // MONTHLY | QUARTERLY | FOUR_MONTHLY | SEMIANNUAL | ANNUAL | CUSTOM
+  firstUpdateAt   DateTime?
+  updatePercent   Decimal?  @db.Decimal(6, 2)
+  updateRounding  String? // EXACT | ROUND_100 | ROUND_1000
+  adjustmentNotes String    @default("")
+
+  // ---- Depósito y garantía (Etapa 4) ----
+  hasDeposit          Boolean   @default(false)
+  depositAmount       Decimal?  @db.Decimal(16, 2)
+  depositCurrency     String?
+  depositInstallments Int?
+  depositStatus       String? // PENDING | PARTIAL | PAID
+  depositHeldBy       String? // AGENCY | OWNER
+  guaranteeType       String? // OWNER_PROPERTY | INSURANCE | PAYSLIP | BOND | OTHER
+  guaranteeExpiresAt  DateTime?
+
+  // ---- Estado del inmueble al iniciar el alquiler (Etapa 7, opcional) ----
+  // Marcado a mano por el personal de la inmobiliaria — no hay portal de
+  // autogestión para que inquilino/propietario acepten ellos mismos todavía.
+  tenantAcceptedHandoverAt DateTime?
+  ownerAcceptedHandoverAt  DateTime?
+
+  notes                    String                        @default("")
+  createdAt                DateTime                      @default(now())
+  tenant                   Tenant                        @relation(fields: [tenantId], references: [id])
+  property                 EstateProperty                @relation(fields: [propertyId, tenantId], references: [id, tenantId])
+  contact                  EstateContact                 @relation(fields: [contactId, tenantId], references: [id, tenantId])
+  charges                  EstateCharge[]
+  documents                EstateContractDocument[]
+  handoverPhotos           EstateContractHandoverPhoto[]
+  guarantors               EstateContractGuarantor[]
+  chargeConcepts           EstateContractChargeConcept[]
+  estateBillingSuggestions EstateBillingSuggestion[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, reference])
+  @@index([tenantId, endsAt])
+}
+
+// Documentos del contrato (contrato firmado, inventario, acta de entrega,
+// etc.) — Etapa 5. Uno-a-muchos porque puede haber más de uno del mismo
+// tipo con el tiempo (ej. addendas). Sin enforcement de "visibility" todavía:
+// no hay ningún portal externo que lea EstateContract hoy, es metadata para
+// cuando ese portal exista.
+model EstateContractDocument {
+  id         String         @id @default(cuid())
+  tenantId   String
+  contractId String
+  title      String
+  type       String // SIGNED_CONTRACT | INVENTORY | DELIVERY_ACT | OTHER
+  visibility String         @default("AGENCY_ONLY") // AGENCY_ONLY | TENANT | OWNER | BOTH
+  url        String
+  createdAt  DateTime       @default(now())
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
+  contract   EstateContract @relation(fields: [contractId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId, contractId])
+}
+
+// Fotos del estado del inmueble al iniciar el alquiler — Etapa 7 (opcional).
+model EstateContractHandoverPhoto {
+  id         String         @id @default(cuid())
+  tenantId   String
+  contractId String
+  url        String
+  createdAt  DateTime       @default(now())
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
+  contract   EstateContract @relation(fields: [contractId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId, contractId])
+}
+
+// Garantes del contrato — varios-a-muchos: un contrato puede tener más de
+// un garante y un mismo contacto puede ser garante de varios contratos.
+model EstateContractGuarantor {
+  id         String         @id @default(cuid())
+  tenantId   String
+  contractId String
+  contactId  String
+  createdAt  DateTime       @default(now())
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
+  contract   EstateContract @relation(fields: [contractId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  contact    EstateContact  @relation(fields: [contactId, tenantId], references: [id, tenantId])
+
+  @@unique([contractId, contactId])
+  @@index([tenantId, contractId])
+  @@index([tenantId, contactId])
+}
+
+// Conceptos que habitualmente se le suman al inquilino junto con el
+// alquiler (expensas, ABL, tasas). No guarda un monto fijo: el conjunto de
+// conceptos que corresponde puede cambiar de un mes a otro, así que cada
+// período se arma una EstateBillingSuggestion (kind EXTRA_CHARGES) para
+// revisar a mano qué aplica y cuánto sale — ver /api/cron/estate-billing.
+// lastAmount/lastCurrency son solo para precargar la sugerencia siguiente,
+// nunca se cobran solos.
+model EstateContractChargeConcept {
+  id           String         @id @default(cuid())
+  tenantId     String
+  contractId   String
+  name         String
+  active       Boolean        @default(true)
+  lastAmount   Decimal?       @db.Decimal(16, 2)
+  lastCurrency String?
+  createdAt    DateTime       @default(now())
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  contract     EstateContract @relation(fields: [contractId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId, contractId])
+}
+
+// Valor mensual publicado de un índice (IPC, ICL, etc.) — Etapa 6.3, lo
+// carga el propio tenant a mano cada mes porque no hay integración con
+// ninguna fuente externa (INDEC/BCRA) en este codebase. El cron de
+// actualización lo consulta; si no está cargado para el período que
+// corresponde, deja el contrato marcado "pendiente de índice" en vez de
+// inventar un valor.
+model EstateRentIndexValue {
+  id       String  @id @default(cuid())
+  tenantId String
+  index    String // IPC | ICL | OTHER_INDEX
+  period   String // "YYYY-MM"
+  percent  Decimal @db.Decimal(6, 2)
+  tenant   Tenant  @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, index, period])
+  @@index([tenantId, index])
+}
+
+// Cargos/actualizaciones que el cron de automatización calculó pero no
+// aplicó todavía — "modo revisión" (Etapa 6.5). Se borra la fila al
+// aprobar o descartar.
+model EstateBillingSuggestion {
+  id         String         @id @default(cuid())
+  tenantId   String
+  contractId String
+  kind       String // CHARGE | LATE_FEE | RENT_UPDATE
+  period     String // "YYYY-MM"
+  payload    Json // detalle específico de kind (monto sugerido, etc.)
+  createdAt  DateTime       @default(now())
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
+  contract   EstateContract @relation(fields: [contractId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([contractId, kind, period])
+  @@index([tenantId])
+}
+
+model EstateBuilding {
+  id        String       @id @default(cuid())
+  tenantId  String
+  name      String
+  address   String
+  notes     String       @default("")
+  createdAt DateTime     @default(now())
+  tenant    Tenant       @relation(fields: [tenantId], references: [id])
+  units     EstateUnit[]
+
+  @@unique([id, tenantId])
+}
+
+model EstateUnit {
+  id              String         @id @default(cuid())
+  tenantId        String
+  buildingId      String
+  label           String
+  coefficient     Decimal        @db.Decimal(9, 6)
+  responsibleName String
+  building        EstateBuilding @relation(fields: [buildingId, tenantId], references: [id, tenantId])
+  charges         EstateCharge[]
+
+  @@unique([id, tenantId])
+  @@unique([buildingId, label])
+}
+
+model EstateCharge {
+  id             String          @id @default(cuid())
+  tenantId       String
+  contractId     String?
+  unitId         String?
+  concept        String
+  period         String
+  dueAt          DateTime
+  amount         Decimal         @db.Decimal(16, 2)
+  currency       String          @default("ARS")
+  cancelled      Boolean         @default(false)
+  // Etapa 4 (recordatorio de vencimiento) — se marca al mandar el mail para
+  // no reenviarlo cada día que corre el cron hasta que se pague.
+  reminderSentAt DateTime?
+  createdAt      DateTime        @default(now())
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  contract       EstateContract? @relation(fields: [contractId, tenantId], references: [id, tenantId])
+  unit           EstateUnit?     @relation(fields: [unitId, tenantId], references: [id, tenantId])
+  receipts       EstateReceipt[]
+
+  @@unique([id, tenantId])
+  @@unique([contractId, period, concept])
+  @@unique([unitId, period, concept])
+  @@index([tenantId, dueAt])
+}
+
+// Recibos manuales confirmados. No representa comprobantes pendientes ni pagos online.
+model EstateReceipt {
+  id             String       @id @default(cuid())
+  tenantId       String
+  chargeId       String
+  amount         Decimal      @db.Decimal(16, 2)
+  method         String
+  reference      String
+  idempotencyKey String       @unique
+  paidAt         DateTime
+  createdAt      DateTime     @default(now())
+  tenant         Tenant       @relation(fields: [tenantId], references: [id])
+  charge         EstateCharge @relation(fields: [chargeId, tenantId], references: [id, tenantId])
+
+  @@index([tenantId, chargeId])
+}
+
+model EstateMaintenance {
+  id          String         @id @default(cuid())
+  tenantId    String
+  propertyId  String
+  title       String
+  description String
+  priority    String         @default("NORMAL")
+  status      String         @default("OPEN")
+  supplier    String         @default("")
+  createdAt   DateTime       @default(now())
+  tenant      Tenant         @relation(fields: [tenantId], references: [id])
+  property    EstateProperty @relation(fields: [propertyId, tenantId], references: [id, tenantId])
+
+  @@index([tenantId, status])
+}
+
+model EstateAuditEvent {
+  id        String   @id @default(cuid())
+  tenantId  String
+  actorId   String
+  entity    String
+  entityId  String
+  action    String
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+}
+
+model EstateDeal {
+  id         String         @id @default(cuid())
+  tenantId   String
+  propertyId String
+  contactId  String
+  operation  String
+  stage      String         @default("NEGOTIATION")
+  amount     Decimal?       @db.Decimal(16, 2)
+  currency   String         @default("USD")
+  agentName  String
+  notes      String         @default("")
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
+  property   EstateProperty @relation(fields: [propertyId, tenantId], references: [id, tenantId])
+  contact    EstateContact  @relation(fields: [contactId, tenantId], references: [id, tenantId])
+
+  @@index([tenantId, stage])
+}
+
+model EstateValuation {
+  id           String        @id @default(cuid())
+  tenantId     String
+  contactId    String
+  address      String
+  propertyType String
+  status       String        @default("NEW")
+  amount       Decimal?      @db.Decimal(16, 2)
+  currency     String        @default("USD")
+  notes        String        @default("")
+  createdAt    DateTime      @default(now())
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  contact      EstateContact @relation(fields: [contactId, tenantId], references: [id, tenantId])
+
+  @@index([tenantId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Módulo Posventa — dominio propio, separado de Inmobiliaria (EstateBuilding/
+// EstateUnit son una estructura liviana de cobranzas tipo expensas, sin
+// dueños ni portal). Desarrollo → Unidad, catálogo de Sección/Rubro con
+// filas default (developmentId null) copiadas a cada desarrollo nuevo,
+// contactos propios (propietario/inquilino) vinculados a
+// User.postSaleContactId.
+// ---------------------------------------------------------------------------
+
+enum PostSaleContactKind {
+  OWNER
+  TENANT
+}
+
+enum PostSaleClaimStatus {
+  NEW
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+  CLOSED
+}
+
+model PostSaleDevelopment {
+  id                String   @id @default(cuid())
+  tenantId          String
+  name              String
+  address           String
+  city              String
+  notes             String   @default("")
+  // false = el catálogo instancia de este desarrollo sigue siendo un espejo
+  // del default del tenant (se copió tal cual al crearlo). true = alguien
+  // decidió personalizarlo para este desarrollo puntual — una vez en true
+  // no vuelve atrás solo, hay que decidirlo de nuevo a mano.
+  catalogCustomized Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+
+  units              PostSaleUnit[]
+  // Solo instancias (developmentId set) — el catálogo default del tenant
+  // vive en filas con developmentId null y no aparece acá.
+  sections           PostSaleSection[]
+  managerAssignments PostSaleManagerBuilding[]
+  claims             PostSaleClaim[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, name])
+}
+
+model PostSaleUnit {
+  id            String              @id @default(cuid())
+  tenantId      String
+  developmentId String
+  label         String
+  floor         String?
+  // Fecha de entrega — pensado para ventanas de garantía a futuro, no se usa
+  // todavía en esta primera tanda.
+  deliveredAt   DateTime?
+  notes         String              @default("")
+  createdAt     DateTime            @default(now())
+  development   PostSaleDevelopment @relation(fields: [developmentId, tenantId], references: [id, tenantId])
+
+  members PostSaleUnitMember[]
+  claims  PostSaleClaim[]
+  tenant  Tenant               @relation(fields: [tenantId], references: [id])
+
+  @@unique([id, tenantId])
+  @@unique([developmentId, label])
+  @@index([tenantId, developmentId])
+}
+
+// Universo de contactos propio de Posventa — no se mezcla con EstateContact
+// (Inmobiliaria). kind = OWNER requiere taxId para el cruce de autoregistro
+// (Google + DNI); kind = TENANT es un sub-usuario invitado por el
+// propietario, sin taxId.
+model PostSaleContact {
+  id                 String              @id @default(cuid())
+  tenantId           String
+  kind               PostSaleContactKind
+  // Nullable a propósito: la carga masiva por planilla solo exige DNI +
+  // unidad — el nombre puede llegar recién con el registro (Google lo trae
+  // verificado). Ver linkPostSaleAccountByDni, que lo completa si falta.
+  name               String?
+  email              String?
+  phone              String?
+  taxId              String?
+  invitedByContactId String?
+  createdAt          DateTime            @default(now())
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  invitedBy          PostSaleContact?    @relation("PostSaleTenantInvites", fields: [invitedByContactId], references: [id], onDelete: SetNull)
+  invitedTenants     PostSaleContact[]   @relation("PostSaleTenantInvites")
+
+  memberships PostSaleUnitMember[]
+  claims      PostSaleClaim[]
+  portalUser  User?
+
+  @@unique([id, tenantId])
+  // Postgres permite múltiples filas con taxId null (contactos TENANT), la
+  // unicidad solo aplica entre valores no-null.
+  @@unique([tenantId, taxId])
+  @@index([tenantId, taxId])
+}
+
+model PostSaleUnitMember {
+  id        String          @id @default(cuid())
+  tenantId  String
+  unitId    String
+  contactId String
+  createdAt DateTime        @default(now())
+  unit      PostSaleUnit    @relation(fields: [unitId, tenantId], references: [id, tenantId])
+  contact   PostSaleContact @relation(fields: [contactId, tenantId], references: [id, tenantId])
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
+
+  @@unique([unitId, contactId])
+  @@index([tenantId, unitId])
+  @@index([tenantId, contactId])
+}
+
+// Catálogo de secciones (palier, living, dormitorio...). developmentId null =
+// catálogo default del tenant; con valor = instancia copiada a ese desarrollo
+// al crearlo, editable ahí sin tocar el default.
+model PostSaleSection {
+  id            String               @id @default(cuid())
+  tenantId      String
+  developmentId String?
+  name          String
+  order         Int                  @default(0)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  tenant        Tenant               @relation(fields: [tenantId], references: [id])
+  development   PostSaleDevelopment? @relation(fields: [developmentId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  rubros PostSaleRubro[]
+  claims PostSaleClaim[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, developmentId, order])
+}
+
+model PostSaleRubro {
+  id             String          @id @default(cuid())
+  tenantId       String
+  sectionId      String
+  name           String
+  order          Int             @default(0)
+  // "Otros" — rubro catch-all obligatorio en cada sección, no se borra desde
+  // la UI aunque el resto del catálogo sea editable.
+  isCatchAll     Boolean         @default(false)
+  // Cuántos meses después de la entrega de la unidad sigue cubierto este
+  // rubro — null = sin definir (no se puede calcular vigencia todavía).
+  warrantyMonths Int?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  section        PostSaleSection @relation(fields: [sectionId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  claims PostSaleClaim[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, sectionId, order])
+}
+
+// Espejo de EstateAgent: ficha 1:1 con User (no un Role aparte), para que la
+// misma persona pueda ser agente inmobiliario y administrador de posventa
+// con un solo login.
+model PostSaleManager {
+  userId        String?  @unique
+  accessEnabled Boolean  @default(false)
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  email         String?
+  phone         String?
+  createdAt     DateTime @default(now())
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  assignments    PostSaleManagerBuilding[]
+  assignedClaims PostSaleClaim[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, name])
+}
+
+model PostSaleManagerBuilding {
+  id            String              @id @default(cuid())
+  tenantId      String
+  managerId     String
+  developmentId String
+  createdAt     DateTime            @default(now())
+  manager       PostSaleManager     @relation(fields: [managerId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  development   PostSaleDevelopment @relation(fields: [developmentId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant        Tenant              @relation(fields: [tenantId], references: [id])
+
+  @@unique([managerId, developmentId])
+  @@index([tenantId, developmentId])
+}
+
+// Día uno sin login — se suma userId recién cuando se construya el portal de
+// proveedores (migración aditiva, no se precarga sin uso).
+model PostSaleProvider {
+  userId        String?  @unique
+  accessEnabled Boolean  @default(false)
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  phone         String?
+  email         String?
+  specialty     String   @default("")
+  createdAt     DateTime @default(now())
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  claims PostSaleClaim[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, name])
+}
+
+model PostSaleClaim {
+  id                 String              @id @default(cuid())
+  tenantId           String
+  developmentId      String
+  unitId             String
+  // Quien reclama — un PostSaleContact, sea OWNER o TENANT.
+  contactId          String
+  // sectionId/rubroId deben apuntar a filas instancia (developmentId set),
+  // nunca al catálogo default — se valida en la acción, no en la base.
+  sectionId          String
+  rubroId            String
+  title              String
+  description        String              @default("")
+  status             PostSaleClaimStatus @default(NEW)
+  photos             String[]            @default([])
+  // Solo visible para staff, nunca se renderiza en el portal del propietario.
+  internalNotes      String?
+  assignedManagerId  String?
+  assignedProviderId String?
+  // Último momento en que cada lado vio el chat del reclamo — la cuenta de
+  // "no leídos" se calcula comparando contra esto, no se guarda un flag por
+  // mensaje.
+  staffLastReadAt    DateTime?
+  ownerLastReadAt    DateTime?
+  providerLastReadAt DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id])
+  development PostSaleDevelopment    @relation(fields: [developmentId, tenantId], references: [id, tenantId])
+  unit        PostSaleUnit           @relation(fields: [unitId, tenantId], references: [id, tenantId])
+  contact     PostSaleContact        @relation(fields: [contactId, tenantId], references: [id, tenantId])
+  section     PostSaleSection        @relation(fields: [sectionId, tenantId], references: [id, tenantId])
+  rubro       PostSaleRubro          @relation(fields: [rubroId, tenantId], references: [id, tenantId])
+  manager     PostSaleManager?       @relation(fields: [assignedManagerId], references: [id], onDelete: SetNull)
+  provider    PostSaleProvider?      @relation(fields: [assignedProviderId], references: [id], onDelete: SetNull)
+  events      PostSaleClaimEvent[]
+  messages    PostSaleClaimMessage[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, developmentId])
+  @@index([tenantId, unitId])
+}
+
+// Espejo de EstateDevelopmentInquiryEvent: historial de estado del reclamo.
+model PostSaleClaimEvent {
+  id        String              @id @default(cuid())
+  claimId   String
+  status    PostSaleClaimStatus
+  notes     String?
+  createdAt DateTime            @default(now())
+  claim     PostSaleClaim       @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId, createdAt])
+}
+
+enum PostSaleClaimMessageSender {
+  STAFF
+  OWNER
+  PROVIDER
+}
+
+// Canal de mensajes por reclamo, entre el staff y quien lo generó (o
+// cualquier otro miembro de la unidad). Sin FK al remitente puntual a
+// propósito — snapshot de nombre, mismo criterio liviano que el resto del
+// módulo — no hace falta saber CUÁL admin escribió, solo que fue "staff".
+model PostSaleClaimMessage {
+  id         String                     @id @default(cuid())
+  claimId    String
+  sender     PostSaleClaimMessageSender
+  senderName String
+  body       String
+  createdAt  DateTime                   @default(now())
+  claim      PostSaleClaim              @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId, createdAt])
+}

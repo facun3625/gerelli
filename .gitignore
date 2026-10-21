@@ -1,0 +1,65 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/.next-*/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+/src/generated/prisma
+
+# Base de datos de geolocalización (scripts/update-geolite2.sh) — ~70MB,
+# se descarga con la license key de MaxMind, no va en git.
+/data/GeoLite2-City.mmdb
+
+# uploads (fotos de productos, comprobantes) - solo local en dev
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# backups de la base (ver src/lib/backup.ts) - solo local/VPS, nunca en git
+/data/backups/*
+!/data/backups/.gitkeep
+
+# proyecto de referencia completo (con su propio node_modules, ~576MB) usado
+# solo para mirar ideas de UI/estructura - no es parte de esta app
+/reference-real-estate
+
+# scripts sueltos de inspección puntual de la base, no forman parte de la app
+/inspect-drift.mjs
+/inspect-drift2.mjs

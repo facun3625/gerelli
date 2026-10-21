@@ -1,0 +1,4 @@
+-- Placeholder: this migration was already applied to the local dev
+-- database (see _prisma_migrations) but its original file was lost from
+-- the repo. Recreated as a no-op so `prisma migrate resolve --applied`
+-- and future `migrate dev` runs stop detecting drift.
