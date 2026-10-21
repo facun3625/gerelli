@@ -55,7 +55,16 @@ async function buildPayload(tenantId: string, property: PropertyForMl, listing: 
       // ML solo quiere UN id (barrio o ciudad) — si mandás el de barrio
       // completa estado y ciudad solo; mandar el de estado directamente
       // hace que rechace la publicación (ver src/lib/mercadolibre/locations.ts).
-      location: location.mlNeighborhoodId ? { neighborhood: { id: location.mlNeighborhoodId } } : { city: { id: location.mlCityId } },
+      // No mandamos address_line a propósito: EstateProperty.address es
+      // privada (no se muestra en la web pública, ver estate/modules.ts) y
+      // mandarla a un tercero rompería esa decisión. lat/long sí son
+      // públicas (se usan en /mapa), así que van para el pin preciso.
+      location: {
+        ...(location.mlNeighborhoodId ? { neighborhood: { id: location.mlNeighborhoodId } } : { city: { id: location.mlCityId } }),
+        ...(property.latitude != null && property.longitude != null
+          ? { latitude: Number(property.latitude), longitude: Number(property.longitude) }
+          : {}),
+      },
       pictures: property.media.map((m) => ({ source: m.url })),
       attributes: attributeValues,
     },

@@ -38,7 +38,9 @@ function buildKnownValue(id: KnownAttributeId, attribute: MlCategoryAttribute, p
     case "FULL_BATHROOMS":
       return { id: attribute.id, value_name: String(property.bathrooms) };
     case "GARAGE":
-      return property.garages > 0 ? { id: attribute.id, value_name: String(property.garages) } : null;
+      // 0 es un valor válido (no tiene cochera) — se manda siempre, igual
+      // que BEDROOMS/FULL_BATHROOMS, nunca se trata como "falta resolver".
+      return { id: attribute.id, value_name: String(property.garages) };
     default:
       return null;
   }
