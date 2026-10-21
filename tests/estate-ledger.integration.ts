@@ -17,10 +17,10 @@ async function main() {
     await db.$transaction(
       async (tx) => {
         const tenant = await tx.tenant.create({
-          data: { subdomain: `test-estate-${randomUUID()}`, category: "DEMO" },
+          data: {},
         });
         const other = await tx.tenant.create({
-          data: { subdomain: `test-estate-${randomUUID()}`, category: "DEMO" },
+          data: {},
         });
         const contact = await tx.estateContact.create({
           data: { tenantId: tenant.id, name: "Fixture", roles: ["TENANT"] },
@@ -123,10 +123,10 @@ async function main() {
   try {
     await db.$transaction(async (tx) => {
       const a = await tx.tenant.create({
-        data: { subdomain: `test-fk-${randomUUID()}` },
+        data: {},
       });
       const b = await tx.tenant.create({
-        data: { subdomain: `test-fk-${randomUUID()}` },
+        data: {},
       });
       const contact = await tx.estateContact.create({
         data: { tenantId: a.id, name: "Fixture" },

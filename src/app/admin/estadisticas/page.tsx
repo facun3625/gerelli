@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import {
   Building2,
   CalendarCheck2,
@@ -125,8 +124,7 @@ export default async function EstadisticasPage({
 }: {
   searchParams: Promise<{ periodo?: string }>;
 }) {
-  const { tenant, features } = await requireTenantAdminWithPlan();
-  if (!features.allowStats) notFound();
+  const { tenant } = await requireTenantAdminWithPlan();
   const requestedPeriod = (await searchParams).periodo;
   const days =
     requestedPeriod === "7" || requestedPeriod === "90"

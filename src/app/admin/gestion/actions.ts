@@ -351,24 +351,6 @@ export async function saveEstateRecord(
               offerType === "RENT" || offerType === "RENT_TEMP" || offerType === "BOTH";
             const temporary = offerType === "RENT_TEMP";
             await verifyRelations(tx, tenantId, data);
-            if (data.published) {
-              const plan = tenant.planId
-                ? await tx.plan.findUnique({ where: { id: tenant.planId } })
-                : null;
-              if (
-                plan?.maxPublishedProperties != null &&
-                (await tx.estateProperty.count({
-                  where: {
-                    tenantId,
-                    published: true,
-                    ...(id ? { id: { not: id } } : {}),
-                  },
-                })) >= plan.maxPublishedProperties
-              )
-                throw new ActionError(
-                  "Alcanzaste el límite de propiedades publicadas de tu plan.",
-                );
-            }
             record = id
               ? await tx.estateProperty.update({ where, data: { ...data, floorPlanUrl } })
               : await tx.estateProperty.create({ data: { ...data, floorPlanUrl, tenantId } });

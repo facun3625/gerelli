@@ -3,7 +3,7 @@
 import { createContext, useContext } from "react";
 import type { StoreSettings } from "@/lib/settings";
 
-type StoreSettingsValue = StoreSettings & { tenantId: string; isDemo: boolean };
+type StoreSettingsValue = StoreSettings & { tenantId: string };
 
 const StoreSettingsContext = createContext<StoreSettingsValue | null>(null);
 

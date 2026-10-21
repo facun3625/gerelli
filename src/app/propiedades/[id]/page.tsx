@@ -7,7 +7,6 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { getCurrentTenant } from "@/lib/tenant";
 import { getStoreSettings } from "@/lib/settings";
-import { canTenantReceiveOrders } from "@/lib/billing-status";
 import { StoreHero } from "@/components/catalog/store-hero";
 import { StoreFooter } from "@/components/catalog/store-footer";
 import { InquiryForm } from "@/components/estate/inquiry-form";
@@ -19,7 +18,7 @@ import { money, labels } from "@/lib/estate/modules";
 import { toWhatsAppMessageLink } from "@/lib/social-links";
 async function getProperty(id: string) {
   const tenant = await getCurrentTenant();
-  if (!tenant || !canTenantReceiveOrders(tenant)) notFound();
+  if (!tenant) notFound();
   const property = await prisma.estateProperty.findFirst({
     where: {
       id,

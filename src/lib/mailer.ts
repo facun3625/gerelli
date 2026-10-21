@@ -2,12 +2,9 @@ import { Resend } from "resend";
 
 import { prisma } from "@/lib/prisma";
 import { getStoreSettings } from "@/lib/settings";
-import { getPlatformResendSettings } from "@/lib/platform-billing";
 
 export type EmailType =
-  | "ORDER_CONFIRMATION"
   | "PASSWORD_RESET"
-  | "TEST_ORDER"
   | "SERVICE_INQUIRY"
   | "DEVELOPMENT_INQUIRY"
   | "ADMIN_INVITE"
@@ -15,10 +12,8 @@ export type EmailType =
 
 let warned = false;
 
-// Un solo remitente para toda la plataforma (a diferencia del SMTP por
-// tienda de antes) — se configura una vez desde /platform/configuracion
-// (ver getPlatformResendSettings), no por tienda. Cada tienda no verifica su
-// propio dominio, solo cambia el nombre que se ve en el "De:" más abajo.
+// Remitente único de la app — se configura con RESEND_API_KEY/RESEND_FROM_EMAIL
+// en el .env del servidor.
 export async function sendMail({
   tenantId,
   to,
@@ -32,10 +27,11 @@ export async function sendMail({
   html: string;
   type: EmailType;
 }) {
-  const { configured, apiKey, fromEmail } = await getPlatformResendSettings();
-  if (!configured || !apiKey || !fromEmail) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !fromEmail) {
     if (!warned) {
-      console.warn("Resend no está configurado (Platform → Configuración) — no se van a enviar mails.");
+      console.warn("Resend no está configurado (RESEND_API_KEY/RESEND_FROM_EMAIL) — no se van a enviar mails.");
       warned = true;
     }
     return;

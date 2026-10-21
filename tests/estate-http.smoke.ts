@@ -58,9 +58,7 @@ async function request(path: string, init: RequestInit = {}) {
   return response;
 }
 async function main() {
-  const tenant = await db.tenant.findUniqueOrThrow({
-    where: { subdomain: "demo-inmo" },
-  });
+  const tenant = await db.tenant.findFirstOrThrow();
   const first = await request("/admin");
   assert([302, 307].includes(first.status));
   const csrf = await (await request("/api/auth/csrf")).json();

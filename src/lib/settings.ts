@@ -88,11 +88,10 @@ const SETTINGS_KEYS = [
 
 export const getStoreSettings = cache(
   async (tenantId: string): Promise<StoreSettings> => {
-    const [rows, serviceCount, developmentCount] = await Promise.all([
+    const [rows, developmentCount] = await Promise.all([
       prisma.settings.findMany({
         where: { tenantId, key: { in: [...SETTINGS_KEYS] } },
       }),
-      prisma.service.count({ where: { tenantId, active: true } }),
       prisma.estateDevelopment.count({ where: { tenantId, published: true } }),
     ]);
     const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
@@ -117,7 +116,7 @@ export const getStoreSettings = cache(
         map.store_footer_pitch_title || DEFAULT_FOOTER_PITCH_TITLE,
       footerPitchText: map.store_footer_pitch_text || DEFAULT_FOOTER_PITCH_TEXT,
       template: map.store_template || DEFAULT_STORE_TEMPLATE,
-      hasServices: serviceCount > 0,
+      hasServices: false,
       hasDevelopments: developmentCount > 0,
       headerBgColor: map.store_header_bg_color || DEFAULT_HEADER_BG_COLOR,
       menuBgColor: map.store_menu_bg_color || DEFAULT_MENU_BG_COLOR,
@@ -143,18 +142,7 @@ export const getStoreSettings = cache(
   },
 );
 
-// ---------- Mensaje editable del mail de pedido ----------
-
-export const getOrderEmailMessage = cache(
-  async (tenantId: string): Promise<string | null> => {
-    const row = await prisma.settings.findUnique({
-      where: { tenantId_key: { tenantId, key: "order_email_message" } },
-    });
-    return row?.value || null;
-  },
-);
-
-// ---------- SEO (solo tiendas con dominio propio verificado) ----------
+// ---------- SEO ----------
 
 export type SeoSettings = {
   title: string | null;
@@ -182,7 +170,7 @@ export const getSeoSettings = cache(
   },
 );
 
-// ---------- Telegram (aviso de pedido nuevo al grupo del equipo) ----------
+// ---------- Telegram (aviso al equipo) ----------
 
 export type TelegramSettings = {
   configured: boolean;
@@ -211,31 +199,65 @@ export const getTelegramSettings = cache(
   },
 );
 
-export type AiAgentSettings = {
+// ---------- Agente de ventas IA ----------
+
+export type AiAssistantSettings = {
   enabled: boolean;
-  tone: string | null;
-  rules: string | null;
-  greeting: string | null;
+  provider: "openai" | "gemini" | null;
+  apiKey: string | null;
+  model: string | null;
+  name: string;
+  welcomeMessage: string;
+  instructions: string | null;
+  humanDays: number[];
+  humanStartTime: string;
+  humanEndTime: string;
 };
 
-const AI_AGENT_SETTINGS_KEYS = [
-  "ai_agent_enabled",
-  "ai_agent_tone",
-  "ai_agent_rules",
-  "ai_agent_greeting",
+export const DEFAULT_AI_ASSISTANT_NAME = "Asistente virtual";
+export const DEFAULT_AI_WELCOME_MESSAGE =
+  "¡Hola! Contame qué propiedad estás buscando (zona, tipo, presupuesto) y te ayudo a encontrar opciones.";
+export const DEFAULT_AI_HUMAN_DAYS = [1, 2, 3, 4, 5, 6];
+export const DEFAULT_AI_HUMAN_START_TIME = "09:00";
+export const DEFAULT_AI_HUMAN_END_TIME = "18:00";
+
+const AI_SETTINGS_KEYS = [
+  "ai_assistant_enabled",
+  "ai_provider",
+  "ai_api_key",
+  "ai_model",
+  "ai_assistant_name",
+  "ai_welcome_message",
+  "ai_instructions",
+  "ai_human_days",
+  "ai_human_start_time",
+  "ai_human_end_time",
 ] as const;
 
-export const getAiAgentSettings = cache(
-  async (tenantId: string): Promise<AiAgentSettings> => {
+export const getAiAssistantSettings = cache(
+  async (tenantId: string): Promise<AiAssistantSettings> => {
     const rows = await prisma.settings.findMany({
-      where: { tenantId, key: { in: [...AI_AGENT_SETTINGS_KEYS] } },
+      where: { tenantId, key: { in: [...AI_SETTINGS_KEYS] } },
     });
     const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    const provider = map.ai_provider === "openai" || map.ai_provider === "gemini" ? map.ai_provider : null;
+    const humanDays = map.ai_human_days
+      ? map.ai_human_days
+          .split(",")
+          .map((d) => Number(d))
+          .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+      : DEFAULT_AI_HUMAN_DAYS;
     return {
-      enabled: map.ai_agent_enabled === "true",
-      tone: map.ai_agent_tone || null,
-      rules: map.ai_agent_rules || null,
-      greeting: map.ai_agent_greeting || null,
+      enabled: map.ai_assistant_enabled === "true",
+      provider,
+      apiKey: map.ai_api_key || null,
+      model: map.ai_model || null,
+      name: map.ai_assistant_name || DEFAULT_AI_ASSISTANT_NAME,
+      welcomeMessage: map.ai_welcome_message || DEFAULT_AI_WELCOME_MESSAGE,
+      instructions: map.ai_instructions || null,
+      humanDays: humanDays.length ? humanDays : DEFAULT_AI_HUMAN_DAYS,
+      humanStartTime: map.ai_human_start_time || DEFAULT_AI_HUMAN_START_TIME,
+      humanEndTime: map.ai_human_end_time || DEFAULT_AI_HUMAN_END_TIME,
     };
   },
 );

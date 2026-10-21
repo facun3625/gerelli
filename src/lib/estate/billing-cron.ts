@@ -37,7 +37,6 @@ export async function runEstateBillingCycle(contractWhere: Prisma.EstateContract
     where: contractWhere,
     include: {
       contact: { include: { portalUser: { select: { email: true } } } },
-      tenant: { select: { subdomain: true } },
     },
   });
 
@@ -246,7 +245,7 @@ export async function runEstateBillingCycle(contractWhere: Prisma.EstateContract
               concept: charge.concept,
               amountLabel: money(charge.amount, charge.currency),
               dueDateLabel: dateLabel(charge.dueAt),
-              portalUrl: `${ROOT_DOMAIN.startsWith("localhost") ? "http" : "https"}://${contract.tenant.subdomain}.${ROOT_DOMAIN}/mi-alquiler`,
+              portalUrl: `${ROOT_DOMAIN.startsWith("localhost") ? "http" : "https"}://${ROOT_DOMAIN}/mi-alquiler`,
             }),
             type: "PAYMENT_REMINDER",
           });

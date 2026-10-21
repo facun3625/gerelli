@@ -1,117 +1,222 @@
 import "dotenv/config";
+import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
+
 import { prisma } from "../src/lib/prisma";
+import demoData from "./seed-data/demo-inmo-export.json";
+import urlMap from "./seed-data/r2-url-map.json";
+
+const TENANT_ID = "gerelli-tenant";
+const ADMIN_EMAIL = "admin@gerellicorrenti.com.ar";
+
+// Contenido inicial copiado del tenant demo-inmo de Urbi, como punto de
+// partida editable desde el admin — ver PLAN_FORK.md.
+function mapUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return (urlMap as Record<string, string>)[url] ?? url;
+}
 
 async function main() {
-  const superAdminEmail = process.env.SEED_SUPER_ADMIN_EMAIL ?? "super@kubbo.app";
-  const superAdminPassword = process.env.SEED_SUPER_ADMIN_PASSWORD ?? "super123";
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@pedidos.local";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin123";
-  const subdomain = process.env.SEED_TENANT_SUBDOMAIN ?? "demo";
+  const existing = await prisma.tenant.findFirst();
+  if (existing) {
+    console.log(`Ya existe un Tenant (${existing.id}) — no se vuelve a sembrar.`);
+    return;
+  }
 
-  // tenantId es null para el super admin, y una unique compuesta no admite
-  // null como valor de búsqueda (NULL nunca es igual a sí mismo en SQL) —
-  // por eso esto va con findFirst + create/update en vez de upsert.
-  const superAdminHash = await bcrypt.hash(superAdminPassword, 10);
-  const existingSuperAdmin = await prisma.user.findFirst({
-    where: { tenantId: null, email: superAdminEmail },
+  await prisma.tenant.create({ data: { id: TENANT_ID } });
+
+  // ---------- Settings (branding + identidad) ----------
+  const settingsOverrides: Record<string, string> = {
+    store_name: "Gerreli",
+    seo_title: "Gerreli · Propiedades en Córdoba",
+  };
+  const skipKeys = new Set(["ai_agent_enabled"]);
+  await prisma.settings.createMany({
+    data: demoData.settings
+      .filter((s) => !skipKeys.has(s.key))
+      .map((s) => {
+        let value = settingsOverrides[s.key] ?? mapUrl(s.value) ?? s.value;
+        if (s.key === "about_text") value = value.replaceAll("Horizonte", "Gerreli");
+        return { tenantId: TENANT_ID, key: s.key, value };
+      }),
   });
-  const superAdmin = existingSuperAdmin
-    ? await prisma.user.update({
-        where: { id: existingSuperAdmin.id },
-        data: { role: "SUPER_ADMIN" },
-      })
-    : await prisma.user.create({
+
+  // ---------- Sobre nosotros ----------
+  await prisma.aboutMedia.createMany({
+    data: demoData.aboutMedia.map((m) => ({
+      tenantId: TENANT_ID,
+      type: m.type as "IMAGE" | "VIDEO",
+      url: mapUrl(m.url)!,
+      order: m.order,
+    })),
+  });
+
+  // ---------- Catálogos (categorías, ciudades, barrios, etc.) ----------
+  await prisma.estatePropertyType.createMany({
+    data: demoData.propertyTypes.map((t) => ({ tenantId: TENANT_ID, name: t.name, order: t.order })),
+  });
+  await prisma.estateCity.createMany({
+    data: demoData.cities.map((c) => ({ tenantId: TENANT_ID, name: c.name, order: c.order })),
+  });
+  await prisma.estateNeighborhood.createMany({
+    data: demoData.neighborhoods.map((n) => ({ tenantId: TENANT_ID, name: n.name, order: n.order })),
+  });
+  await prisma.estateContractType.createMany({
+    data: demoData.contractTypes.map((t) => ({ tenantId: TENANT_ID, name: t.name, order: t.order })),
+  });
+  await prisma.estatePropertyDestination.createMany({
+    data: demoData.propertyDestinations.map((d) => ({ tenantId: TENANT_ID, name: d.name, order: d.order })),
+  });
+
+  // ---------- Contacto propietario ----------
+  const contactIdMap = new Map<string, string>();
+  for (const c of demoData.contacts) {
+    const created = await prisma.estateContact.create({
+      data: {
+        tenantId: TENANT_ID,
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        roles: c.roles,
+        notes: c.notes,
+      },
+    });
+    contactIdMap.set(c.id, created.id);
+  }
+
+  // ---------- Emprendimiento ----------
+  const developmentIdMap = new Map<string, string>();
+  for (const d of demoData.developments) {
+    const created = await prisma.estateDevelopment.create({
+      data: {
+        tenantId: TENANT_ID,
+        name: d.name,
+        address: d.address,
+        city: d.city,
+        stage: d.stage,
+        description: d.description,
+        developer: d.developer,
+        amenities: d.amenities,
+        financing: d.financing,
+        videoUrl: d.videoUrl,
+        formTitle: d.formTitle,
+        submitLabel: d.submitLabel,
+        published: d.published,
+        latitude: d.latitude,
+        longitude: d.longitude,
+      },
+    });
+    developmentIdMap.set(d.id, created.id);
+  }
+  const developmentImagesByDevelopment = new Map<string, typeof demoData.developmentImages>();
+  for (const img of demoData.developmentImages) {
+    const list = developmentImagesByDevelopment.get(img.developmentId) ?? [];
+    list.push(img);
+    developmentImagesByDevelopment.set(img.developmentId, list);
+  }
+  for (const [oldDevId, newDevId] of developmentIdMap) {
+    const images = developmentImagesByDevelopment.get(oldDevId) ?? [];
+    if (images.length) {
+      await prisma.estateDevelopmentImage.createMany({
+        data: images.map((img) => ({
+          developmentId: newDevId,
+          url: mapUrl(img.url)!,
+          order: img.order,
+        })),
+      });
+    }
+  }
+
+  // ---------- Propiedades ----------
+  const listingsByProperty = new Map<string, typeof demoData.listings>();
+  for (const l of demoData.listings) {
+    const list = listingsByProperty.get(l.propertyId) ?? [];
+    list.push(l);
+    listingsByProperty.set(l.propertyId, list);
+  }
+  const mediaByProperty = new Map<string, typeof demoData.media>();
+  for (const m of demoData.media) {
+    const list = mediaByProperty.get(m.propertyId) ?? [];
+    list.push(m);
+    mediaByProperty.set(m.propertyId, list);
+  }
+
+  for (const p of demoData.properties) {
+    const created = await prisma.estateProperty.create({
+      data: {
+        tenantId: TENANT_ID,
+        code: p.code,
+        title: p.title,
+        description: p.description,
+        propertyType: p.propertyType,
+        address: p.address,
+        city: p.city,
+        neighborhood: p.neighborhood,
+        bedrooms: p.bedrooms,
+        bathrooms: p.bathrooms,
+        garages: p.garages,
+        coveredArea: p.coveredArea,
+        totalArea: p.totalArea,
+        published: p.published,
+        featured: p.featured,
+        featuredOrder: p.featuredOrder,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        ownerId: p.ownerId ? contactIdMap.get(p.ownerId) : null,
+        developmentId: p.developmentId ? developmentIdMap.get(p.developmentId) : null,
+      },
+    });
+
+    const listings = listingsByProperty.get(p.id) ?? [];
+    for (const l of listings) {
+      await prisma.estateListing.create({
         data: {
-          email: superAdminEmail,
-          name: "Super Admin",
-          role: "SUPER_ADMIN",
-          passwordHash: superAdminHash,
+          tenantId: TENANT_ID,
+          propertyId: created.id,
+          operation: l.operation,
+          currency: l.currency,
+          price: l.price,
+          status: l.status,
+          temporary: l.temporary,
+          whatsapp: l.whatsapp,
+          showPrice: l.showPrice,
         },
       });
+    }
 
-  const tenant = await prisma.tenant.upsert({
-    where: { subdomain },
-    update: {},
-    create: { subdomain },
-  });
+    const media = mediaByProperty.get(p.id) ?? [];
+    if (media.length) {
+      await prisma.estateMedia.createMany({
+        data: media.map((m) => ({
+          tenantId: TENANT_ID,
+          propertyId: created.id,
+          url: mapUrl(m.url)!,
+          position: m.position,
+        })),
+      });
+    }
+  }
 
-  const adminHash = await bcrypt.hash(adminPassword, 10);
-  const admin = await prisma.user.upsert({
-    where: { tenantId_email: { tenantId: tenant.id, email: adminEmail } },
-    update: { role: "ADMIN" },
-    create: {
-      tenantId: tenant.id,
-      email: adminEmail,
+  // ---------- Usuario ADMIN ----------
+  const password = randomBytes(9).toString("base64").replace(/[+/=]/g, "").slice(0, 12);
+  await prisma.user.create({
+    data: {
+      tenantId: TENANT_ID,
       name: "Admin",
+      email: ADMIN_EMAIL,
       role: "ADMIN",
-      passwordHash: adminHash,
+      passwordHash: await bcrypt.hash(password, 10),
     },
   });
 
-  await prisma.settings.upsert({
-    where: { tenantId_key: { tenantId: tenant.id, key: "store_name" } },
-    update: {},
-    create: { tenantId: tenant.id, key: "store_name", value: "Tsuki Demo" },
-  });
-
-  await prisma.paymentMethodConfig.upsert({
-    where: { tenantId_type: { tenantId: tenant.id, type: "CASH_ON_DELIVERY" } },
-    update: {},
-    create: { tenantId: tenant.id, type: "CASH_ON_DELIVERY", enabled: true },
-  });
-  await prisma.paymentMethodConfig.upsert({
-    where: { tenantId_type: { tenantId: tenant.id, type: "TRANSFER" } },
-    update: {},
-    create: { tenantId: tenant.id, type: "TRANSFER", enabled: false },
-  });
-  await prisma.paymentMethodConfig.upsert({
-    where: { tenantId_type: { tenantId: tenant.id, type: "MERCADOPAGO" } },
-    update: {},
-    create: { tenantId: tenant.id, type: "MERCADOPAGO", enabled: false },
-  });
-
-  await prisma.fulfillmentMethodConfig.upsert({
-    where: { tenantId_type: { tenantId: tenant.id, type: "DELIVERY" } },
-    update: {},
-    create: { tenantId: tenant.id, type: "DELIVERY", enabled: true },
-  });
-  await prisma.fulfillmentMethodConfig.upsert({
-    where: { tenantId_type: { tenantId: tenant.id, type: "PICKUP" } },
-    update: {},
-    create: { tenantId: tenant.id, type: "PICKUP", enabled: false },
-  });
-
-  // Condiciones del programa de revendedores — arrancan con valores
-  // razonables, 100% editables después desde /platform/revendedores.
-  await prisma.resellerSettings.upsert({
-    where: { id: "global" },
-    update: {},
-    create: { id: "global", activationBonusAmount: 5000, activationBonusDays: 60 },
-  });
-  const tierDefaults = [
-    { minActiveStores: 0, percent: 15 },
-    { minActiveStores: 10, percent: 20 },
-    { minActiveStores: 25, percent: 25 },
-  ];
-  for (const tier of tierDefaults) {
-    await prisma.resellerCommissionTier.upsert({
-      where: { minActiveStores: tier.minActiveStores },
-      update: {},
-      create: tier,
-    });
-  }
-
-  console.log(`Super admin -> ${superAdmin.email} / ${superAdminPassword} (login en /platform/login)`);
-  console.log(`Tienda demo -> ${tenant.subdomain}.localhost:3000`);
-  console.log(`Admin de tienda -> ${admin.email} / ${adminPassword}`);
+  console.log("Seed completo.");
+  console.log(`Tenant: ${TENANT_ID}`);
+  console.log(`Admin:  ${ADMIN_EMAIL} / ${password}`);
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
+  .catch((err) => {
+    console.error(err);
     process.exit(1);
   })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .finally(() => prisma.$disconnect());

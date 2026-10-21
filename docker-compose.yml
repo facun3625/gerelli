@@ -1,15 +1,16 @@
 services:
   db:
     image: postgres:16-alpine
+    container_name: gerelli-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: pedidos
-      POSTGRES_PASSWORD: pedidos
-      POSTGRES_DB: pedidos
+      POSTGRES_USER: gerelli
+      POSTGRES_PASSWORD: gerelli
+      POSTGRES_DB: gerelli
     ports:
-      - "5452:5432"
+      - "5462:5432"
     volumes:
-      - pedidos_db_data:/var/lib/postgresql/data
+      - gerelli_db_data:/var/lib/postgresql/data
 
 volumes:
-  pedidos_db_data:
+  gerelli_db_data:

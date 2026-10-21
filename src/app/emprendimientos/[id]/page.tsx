@@ -7,7 +7,7 @@ import { StoreHero } from "@/components/catalog/store-hero";
 import { RichText } from "@/components/catalog/rich-text";
 import { VideoPlayer } from "@/components/estate/video-player";
 import { DevelopmentMapLoader } from "@/components/estate/development-map-loader";
-import { ServiceCarousel } from "@/app/servicios/service-carousel";
+import { MediaCarousel } from "@/components/estate/media-carousel";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTenant } from "@/lib/tenant";
 import { DevelopmentInquiryForm } from "../development-inquiry-form";
@@ -106,7 +106,7 @@ export default async function DevelopmentPage({
             </div>
           </header>
           <div className="public-enter public-enter-delay-1 mt-10">
-            <ServiceCarousel
+            <MediaCarousel
               images={development.images}
               title={development.name}
               desktopItems={5}

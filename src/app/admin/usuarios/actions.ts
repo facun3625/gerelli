@@ -58,11 +58,6 @@ async function runDeleteUser(id: string) {
   const target = await prisma.user.findUnique({ where: { id, tenantId: tenant.id } });
   if (!target) throw new ActionError("Usuario no encontrado");
 
-  const orderCount = await prisma.order.count({ where: { userId: id } });
-  if (orderCount > 0) {
-    throw new ActionError("No se puede borrar un usuario con pedidos asociados — perderías ese historial.");
-  }
-
   if (target.role === "ADMIN") {
     const adminCount = await prisma.user.count({ where: { tenantId: tenant.id, role: "ADMIN" } });
     if (adminCount <= 1) throw new ActionError("Tiene que quedar al menos un admin");

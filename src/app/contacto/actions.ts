@@ -4,15 +4,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTenant } from "@/lib/tenant";
-import { canTenantReceiveOrders } from "@/lib/billing-status";
 import { isRateLimited, recordFailure, clientIp } from "@/lib/rate-limit";
 import { ActionError, toUserError } from "@/lib/action-error";
 
 export async function sendContactInquiry(form: FormData) {
   const tenant = await getCurrentTenant();
   try {
-    if (!tenant || !canTenantReceiveOrders(tenant))
-      throw new ActionError("El sitio no está disponible");
+    if (!tenant) throw new ActionError("El sitio no está disponible");
     const data = z
       .object({
         name: z.string().trim().min(2).max(150),

@@ -79,8 +79,8 @@ export function TelegramSettingsForm({ settings }: { settings: TelegramSettings 
   return (
     <div className="flex flex-col gap-5 rounded-lg border p-4">
       <p className="text-xs text-muted-foreground">
-        Manda un aviso al grupo de Telegram del equipo apenas entra un pedido nuevo. Sin esto
-        configurado, la tienda sigue funcionando normal, solo que no manda ese aviso.
+        Manda un aviso al grupo de Telegram del equipo apenas entra una consulta de un emprendimiento.
+        Sin esto configurado, el sitio sigue funcionando normal, solo que no manda ese aviso.
       </p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

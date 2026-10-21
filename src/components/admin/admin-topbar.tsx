@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { MenuIcon, StoreIcon, ChevronDownIcon, MoonIcon, SunIcon, PackageXIcon, BellIcon, ShoppingBagIcon, MessageSquareTextIcon, CreditCardIcon, ShieldAlertIcon } from "lucide-react";
+import { MenuIcon, StoreIcon, ChevronDownIcon, MoonIcon, SunIcon, BellIcon, MessageSquareTextIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -18,35 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { ModuleSwitcher } from "@/components/admin/module-switcher";
 import { useAdminTheme } from "@/components/admin/admin-theme-root";
-import type { StockAlert } from "@/lib/stock-alerts";
-import type { PlanFeatures } from "@/lib/require-admin";
-import type { PlatformModuleOption } from "@/lib/platform-modules";
-import { cn } from "@/lib/utils";
-
-function PlanPill({ billingStatus, trialDaysLeft }: { billingStatus: string; trialDaysLeft: number | null }) {
-  let label = "Mi plan";
-  let tone = "border-border bg-background text-muted-foreground hover:bg-muted";
-  if (billingStatus === "TRIAL" && trialDaysLeft !== null) {
-    label = `Prueba · ${trialDaysLeft} ${trialDaysLeft === 1 ? "día" : "días"}`;
-    tone = "border-blue-500/30 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 dark:text-blue-400";
-  } else if (billingStatus === "PAST_DUE" || billingStatus === "SUSPENDED") {
-    label = "Regularizar plan";
-    tone = "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20";
-  }
-  return (
-    <a
-      href="/admin/cuenta-urbi"
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn("flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors", tone)}
-    >
-      <CreditCardIcon className="size-3.5" />
-      <span>{label}</span>
-    </a>
-  );
-}
 
 function initials(name?: string | null) {
   if (!name) return "?";
@@ -58,48 +30,22 @@ function initials(name?: string | null) {
     .join("");
 }
 
-export type AdminNotification = { id: string; type: "ORDER" | "INQUIRY" | "SERVICE_INQUIRY" | "DEVELOPMENT_INQUIRY"; title: string; detail: string; href: string; createdAt: string };
+export type AdminNotification = { id: string; type: "INQUIRY" | "DEVELOPMENT_INQUIRY" | "AI_CONVERSATION"; title: string; detail: string; href: string; createdAt: string };
 
-export function AdminTopbar({ stockAlerts, newInquiryCount = 0, newServiceInquiryCount = 0, newDevelopmentInquiryCount = 0, newOrderCount = 0, notificationCount = 0, notifications = [], billingStatus, trialDaysLeft, features, planInfo, modules, salesModeConfigured = true, impersonating = false, platformUrl }: { storeOpen: boolean; stockAlerts: StockAlert[]; newInquiryCount?: number; newServiceInquiryCount?: number; newDevelopmentInquiryCount?: number; newOrderCount?: number; notificationCount?: number; notifications?: AdminNotification[]; billingStatus: string; trialDaysLeft: number | null; features?: PlanFeatures; planInfo?: { name: string; canUpgrade: boolean } | null; modules: PlatformModuleOption[]; salesModeConfigured?: boolean; impersonating?: boolean; platformUrl?: string }) {
+export function AdminTopbar({ newInquiryCount = 0, newDevelopmentInquiryCount = 0, newAiConversationCount = 0, notificationCount = 0, notifications = [] }: { newInquiryCount?: number; newDevelopmentInquiryCount?: number; newAiConversationCount?: number; notificationCount?: number; notifications?: AdminNotification[] }) {
   const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { containerRef, theme, toggleTheme } = useAdminTheme();
   const isDark = theme === "dark";
 
-
   return (
     <header className="sticky top-0 z-10 flex flex-col border-b bg-background/95 backdrop-blur print:hidden">
-      {impersonating && (
-        <div className="flex items-center justify-between gap-3 border-b border-amber-500/25 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-700 dark:text-amber-400 lg:px-8">
-          <span className="flex items-center gap-1.5">
-            <ShieldAlertIcon className="size-3.5 shrink-0" />
-            Estás viendo este panel en modo soporte, como el admin de esta inmobiliaria.
-          </span>
-          {platformUrl && (
-            <a href={platformUrl} className="shrink-0 font-semibold underline underline-offset-2">
-              Volver a la plataforma
-            </a>
-          )}
-        </div>
-      )}
-      {!salesModeConfigured && (
-        <Link
-          href="/admin/fechas"
-          className="flex items-center justify-between gap-3 border-b border-amber-500/25 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-500/15 dark:text-amber-400 lg:px-8"
-        >
-          <span>
-            Para que tus productos se muestren en la tienda, primero tenés que elegir tu
-            modalidad de venta.
-          </span>
-          <span className="shrink-0 font-semibold underline underline-offset-2">Configurar</span>
-        </Link>
-      )}
       <div className="flex items-center justify-between gap-3 px-4 py-3 lg:px-8">
       {/* Mobile menu */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-72 gap-0 p-0" showCloseButton={false} container={containerRef}>
           <SheetTitle className="sr-only">Menú</SheetTitle>
-          <AdminSidebar onNavigate={() => setMobileOpen(false)} newInquiryCount={newInquiryCount} newServiceInquiryCount={newServiceInquiryCount} newDevelopmentInquiryCount={newDevelopmentInquiryCount} newOrderCount={newOrderCount} features={features} planInfo={planInfo} />
+          <AdminSidebar onNavigate={() => setMobileOpen(false)} newInquiryCount={newInquiryCount} newDevelopmentInquiryCount={newDevelopmentInquiryCount} newAiConversationCount={newAiConversationCount} />
         </SheetContent>
       </Sheet>
       <div className="flex min-w-0 items-center gap-2">
@@ -112,11 +58,9 @@ export function AdminTopbar({ stockAlerts, newInquiryCount = 0, newServiceInquir
         >
           <MenuIcon />
         </Button>
-        <ModuleSwitcher modules={modules} container={containerRef} />
       </div>
 
       <div className="flex items-center gap-2">
-        <PlanPill billingStatus={billingStatus} trialDaysLeft={trialDaysLeft} />
         <DropdownMenu>
           <DropdownMenuTrigger render={<button aria-label="Notificaciones" className="relative flex size-9 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground" />}>
             <BellIcon className="size-4" />
@@ -125,41 +69,9 @@ export function AdminTopbar({ stockAlerts, newInquiryCount = 0, newServiceInquir
           <DropdownMenuContent align="end" className="w-80 p-1.5" container={containerRef}>
             <div className="flex items-center justify-between px-2.5 py-2"><span className="text-sm font-semibold">Notificaciones</span>{notificationCount > 0 && <span className="text-xs font-normal text-muted-foreground">{notificationCount} pendientes</span>}</div>
             <DropdownMenuSeparator />
-            {notifications.length ? <DropdownMenuGroup>{notifications.map(notification => { const Icon = notification.type === "ORDER" ? ShoppingBagIcon : MessageSquareTextIcon; return <DropdownMenuItem key={`${notification.type}-${notification.id}`} render={<Link href={notification.href} />} className="items-start gap-3 rounded-lg px-2.5 py-3"><span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Icon className="size-4" /></span><span className="flex min-w-0 flex-1 flex-col gap-0.5"><span className="truncate text-sm font-medium">{notification.title}</span><span className="truncate text-xs text-muted-foreground">{notification.detail}</span><span className="text-[10px] text-muted-foreground/70">{new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(new Date(notification.createdAt))}</span></span></DropdownMenuItem>; })}</DropdownMenuGroup> : <div className="px-4 py-8 text-center"><BellIcon className="mx-auto size-6 text-muted-foreground/40" /><p className="mt-2 text-sm font-medium">Todo al día</p><p className="mt-1 text-xs text-muted-foreground">No hay pendientes nuevos.</p></div>}
+            {notifications.length ? <DropdownMenuGroup>{notifications.map(notification => <DropdownMenuItem key={`${notification.type}-${notification.id}`} render={<Link href={notification.href} />} className="items-start gap-3 rounded-lg px-2.5 py-3"><span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><MessageSquareTextIcon className="size-4" /></span><span className="flex min-w-0 flex-1 flex-col gap-0.5"><span className="truncate text-sm font-medium">{notification.title}</span><span className="truncate text-xs text-muted-foreground">{notification.detail}</span><span className="text-[10px] text-muted-foreground/70">{new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(new Date(notification.createdAt))}</span></span></DropdownMenuItem>)}</DropdownMenuGroup> : <div className="px-4 py-8 text-center"><BellIcon className="mx-auto size-6 text-muted-foreground/40" /><p className="mt-2 text-sm font-medium">Todo al día</p><p className="mt-1 text-xs text-muted-foreground">No hay pendientes nuevos.</p></div>}
           </DropdownMenuContent>
         </DropdownMenu>
-        {stockAlerts.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <button className="flex h-9 items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/10 px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20" />
-              }
-            >
-              <PackageXIcon className="size-3.5" />
-              <span className="hidden sm:inline">Sin stock</span>
-              <span className="flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-semibold text-destructive-foreground">
-                {stockAlerts.reduce((n, a) => n + a.outOfStockNames.length, 0)}
-              </span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-72 p-1.5" container={containerRef}>
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
-                  Agotado en fechas abiertas
-                </DropdownMenuLabel>
-                {stockAlerts.map((alert) => (
-                  <DropdownMenuItem
-                    key={alert.deliveryDateId}
-                    className="flex flex-col items-start gap-0.5 py-2"
-                    render={<Link href={`/admin/fechas/${alert.deliveryDateId}`} />}
-                  >
-                    <span className="text-sm font-medium">{alert.deliveryDateLabel}</span>
-                    <span className="text-xs text-muted-foreground">{alert.outOfStockNames.join(", ")}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
 
         {/* ── Controles unificados en un único pill ── */}
         <div className="flex items-center divide-x divide-border overflow-hidden rounded-full border bg-background shadow-sm">

@@ -13,36 +13,30 @@ import {
   StoreIcon,
   UsersIcon,
   ChevronDownIcon,
-  ConciergeBellIcon,
   MessageSquareTextIcon,
-  ArrowUpCircleIcon,
-  ExternalLinkIcon,
+  BotIcon,
   DownloadIcon,
   GlobeIcon,
   SearchIcon,
   BuildingIcon,
   UserCheckIcon,
   ChartNoAxesCombinedIcon,
-  ListTreeIcon,
 } from "lucide-react";
 
 import { useStoreSettings } from "@/lib/store-settings-context";
 import { useAdminPwa } from "@/components/admin/pwa-provider";
 import { cn } from "@/lib/utils";
-import type { PlanFeatures } from "@/lib/require-admin";
 import { AGENT_MENU_SECTIONS, type AgentPermissions } from "@/lib/agent-permission-types";
-import { platformModuleForPath } from "@/lib/platform-modules";
 
 type Section = {
   href: string;
   label: string;
   icon: typeof LayoutDashboardIcon;
-  feature?: keyof PlanFeatures;
   group?: string;
   subitems?: { href: string; label: string; panel: string | null }[];
 };
 
-const baseSections: Section[] = [
+const sections: Section[] = [
   {
     href: "/admin",
     label: "Resumen",
@@ -51,8 +45,7 @@ const baseSections: Section[] = [
   },
 
   // Gestión Inmobiliaria — todo lo comercial: propiedades, agenda, contratos
-  // y las dos bandejas de consultas (inmobiliarias y de servicios) viven
-  // juntas acá, aunque cada una lea de un modelo distinto.
+  // y la bandeja de consultas inmobiliarias viven juntas acá.
   {
     href: "/admin/gestion/propiedades",
     label: "Propiedades",
@@ -125,20 +118,6 @@ const baseSections: Section[] = [
     icon: MessageSquareTextIcon,
     group: "Gestión Inmobiliaria",
   },
-  {
-    href: "/admin/servicios",
-    label: "Servicios",
-    icon: ConciergeBellIcon,
-    feature: "allowServices",
-    group: "Gestión Inmobiliaria",
-  },
-  {
-    href: "/admin/consultas",
-    label: "Consultas de servicios",
-    icon: MessageSquareTextIcon,
-    feature: "allowServices",
-    group: "Gestión Inmobiliaria",
-  },
 
   // Cuenta
   {
@@ -151,7 +130,12 @@ const baseSections: Section[] = [
     href: "/admin/estadisticas",
     label: "Estadísticas",
     icon: ChartNoAxesCombinedIcon,
-    feature: "allowStats",
+    group: "Cuenta",
+  },
+  {
+    href: "/admin/conversaciones",
+    label: "Conversaciones IA",
+    icon: BotIcon,
     group: "Cuenta",
   },
   {
@@ -168,73 +152,17 @@ const baseSections: Section[] = [
   },
 ];
 
-const consortiumSections: Section[] = [
-  {
-    href: "/admin/consorcios",
-    label: "Resumen",
-    icon: BuildingIcon,
-    group: "Consorcios",
-  },
-];
-
-const MODULE_ROOT_HREFS = new Set(["/admin", "/admin/consorcios", "/admin/postventa"]);
-
-const postSaleSections: Section[] = [
-  {
-    href: "/admin/postventa",
-    label: "Resumen",
-    icon: SettingsIcon,
-    group: "Postventa",
-  },
-  {
-    href: "/admin/postventa/desarrollos",
-    label: "Desarrollos",
-    icon: BuildingIcon,
-    group: "Postventa",
-  },
-  {
-    href: "/admin/postventa/reclamos",
-    label: "Reclamos",
-    icon: ClipboardListIcon,
-    group: "Postventa",
-  },
-  {
-    href: "/admin/postventa/catalogo",
-    label: "Catálogo por defecto",
-    icon: ListTreeIcon,
-    group: "Postventa",
-  },
-  {
-    href: "/admin/postventa/administradores",
-    label: "Administradores",
-    icon: UserCheckIcon,
-    group: "Postventa",
-  },
-  {
-    href: "/admin/postventa/proveedores",
-    label: "Proveedores",
-    icon: ConciergeBellIcon,
-    group: "Postventa",
-  },
-];
-
 export function AdminSidebar({
   onNavigate,
   newInquiryCount = 0,
-  newServiceInquiryCount = 0,
   newDevelopmentInquiryCount = 0,
-  newOrderCount = 0,
-  features,
-  planInfo,
+  newAiConversationCount = 0,
   agentPermissions,
 }: {
   onNavigate?: () => void;
   newInquiryCount?: number;
-  newServiceInquiryCount?: number;
   newDevelopmentInquiryCount?: number;
-  newOrderCount?: number;
-  features?: PlanFeatures;
-  planInfo?: { name: string; canUpgrade: boolean } | null;
+  newAiConversationCount?: number;
   agentPermissions?: AgentPermissions;
 }) {
   const { storeName, logoUrl } = useStoreSettings();
@@ -243,30 +171,23 @@ export function AdminSidebar({
   const searchParams = useSearchParams();
   const panel = searchParams.get("panel");
   const [query, setQuery] = useState("");
-  const activeModule = platformModuleForPath(pathname);
-  const moduleSections = activeModule === "consortium"
-    ? consortiumSections
-    : activeModule === "post_sale"
-      ? postSaleSections
-      : baseSections;
-  const sections = moduleSections.filter((s) => {
-    if (s.feature && features && !features[s.feature]) return false;
+  const visibleSections = sections.filter((s) => {
     if (!agentPermissions) return true;
     const section = AGENT_MENU_SECTIONS.find((item) => item.href === s.href);
     return Boolean(section && agentPermissions[section.key] !== "NONE");
   });
   const filtered = query.trim()
-    ? sections.filter((s) =>
+    ? visibleSections.filter((s) =>
         s.label.toLowerCase().includes(query.trim().toLowerCase()),
       )
-    : sections;
+    : visibleSections;
 
   // La sección con sub-ítems se abre sola al entrar — pero una vez ahí, el
   // admin puede plegarla a mano sin que se reabra en cada click. Solo se
   // guarda como "override" mientras siga siendo la sección activa; al
   // navegar a otra, se vuelve a calcular desde cero.
   const activeParentHref =
-    sections.find((s) => s.subitems && pathname.startsWith(s.href))?.href ??
+    filtered.find((s) => s.subitems && pathname.startsWith(s.href))?.href ??
     null;
   const [override, setOverride] = useState<{
     href: string;
@@ -353,12 +274,10 @@ export function AdminSidebar({
                 : agentSection?.key === "searches"
                   ? "/agente?channel=searches"
                   : s.href;
-              // "Resumen" de cada módulo (/admin, /admin/consorcios,
-              // /admin/postventa) es prefijo de TODAS sus propias
-              // subpáginas — con startsWith quedaría marcado activo en
-              // cualquier subsección del módulo. Exact match para esos,
-              // startsWith para el resto.
-              const active = MODULE_ROOT_HREFS.has(s.href)
+              // "Resumen" (/admin) es prefijo de todas las subpáginas del
+              // panel — con startsWith quedaría marcado activo siempre.
+              // Exact match para esa, startsWith para el resto.
+              const active = s.href === "/admin"
                 ? pathname === s.href
                 : pathname.startsWith(s.href);
               const expanded = expandedHref === s.href;
@@ -383,18 +302,17 @@ export function AdminSidebar({
                     <Icon className="size-4 shrink-0" />
                     <span className="flex-1">{s.label}</span>
                     {(() => {
-                      // "Consultas inmobiliarias" (EstateInquiry) y "Consultas
-                      // de servicios" (ServiceInquiry) son bandejas distintas
-                      // — antes las dos leían newInquiryCount y la de
-                      // servicios nunca bajaba de 0 real, quedaba tildada.
+                      // "Consultas inmobiliarias" (EstateInquiry) y
+                      // "Consultas de emprendimientos" son bandejas
+                      // distintas, cada una con su propio contador.
                       const count =
                         s.href === "/admin/gestion/consultas"
                           ? newInquiryCount
-                          : s.href === "/admin/consultas"
-                            ? newServiceInquiryCount
-                            : s.href === "/admin/gestion/consultas-emprendimientos"
-                              ? newDevelopmentInquiryCount
-                            : 0;
+                          : s.href === "/admin/gestion/consultas-emprendimientos"
+                            ? newDevelopmentInquiryCount
+                            : s.href === "/admin/conversaciones"
+                              ? newAiConversationCount
+                              : 0;
                       if (count <= 0) return null;
                       return (
                         <span
@@ -409,18 +327,6 @@ export function AdminSidebar({
                         </span>
                       );
                     })()}
-                    {s.href === "/admin/pedidos" && newOrderCount > 0 && (
-                      <span
-                        className={cn(
-                          "flex min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
-                          active
-                            ? "bg-primary-foreground/20 text-primary-foreground"
-                            : "bg-primary text-primary-foreground",
-                        )}
-                      >
-                        {newOrderCount > 99 ? "99+" : newOrderCount}
-                      </span>
-                    )}
                     {s.subitems && (
                       <ChevronDownIcon
                         className={cn(
@@ -471,25 +377,6 @@ export function AdminSidebar({
       </nav>
 
       <div className="border-t border-sidebar-border px-3 py-2">
-        {planInfo && (
-          <div className="mb-1 rounded-lg bg-sidebar-accent/50 px-3 py-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-sidebar-foreground/45">
-              Tu plan
-            </p>
-            <p className="truncate text-sm font-semibold">{planInfo.name}</p>
-            {planInfo.canUpgrade && (
-              <a
-                href="/admin/cuenta-urbi"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1.5 flex items-center justify-center gap-1.5 rounded-md bg-primary py-1 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                <ArrowUpCircleIcon className="size-3.5" />
-                Mejorar plan
-              </a>
-            )}
-          </div>
-        )}
         <Link
           href="/"
           onClick={onNavigate}
@@ -498,15 +385,6 @@ export function AdminSidebar({
           <StoreIcon className="size-4 shrink-0" />
           Ver sitio
         </Link>
-        <a
-          href="/admin/cuenta-urbi"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        >
-          <ExternalLinkIcon className="size-4 shrink-0" />
-          Panel de Urbi
-        </a>
         {canInstall && (
           <button
             type="button"

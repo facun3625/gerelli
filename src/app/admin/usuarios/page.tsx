@@ -45,7 +45,6 @@ export default async function UsersPage({
   const [users, total] = await Promise.all([
     prisma.user.findMany({
       where,
-      include: { _count: { select: { orders: true } } },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -81,7 +80,6 @@ export default async function UsersPage({
           <TableRow>
             <TableHead>Nombre</TableHead>
             <TableHead>Email</TableHead>
-            <TableHead>Pedidos</TableHead>
             <TableHead>Se unió</TableHead>
             <TableHead>Admin</TableHead>
             <TableHead />
@@ -99,7 +97,6 @@ export default async function UsersPage({
                   {isSelf && <Badge variant="secondary" className="ml-2">Vos</Badge>}
                 </TableCell>
                 <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                <TableCell>{u._count.orders}</TableCell>
                 <TableCell>{dateFormatter.format(u.createdAt)}</TableCell>
                 <TableCell>
                   <UserRoleToggle id={u.id} role={u.role} disabled={isSelf} />

@@ -4,11 +4,8 @@ import { ArrowLeftIcon } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { requireTenantAdmin } from "@/lib/require-admin";
-import { formatPrice } from "@/lib/format";
-import { FULFILLMENT_TYPE_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/order-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { OrdersTable } from "../../pedidos/orders-table";
 import { UserRoleToggle, UserDeleteButton } from "../user-row-actions";
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" });
@@ -21,21 +18,11 @@ export default async function UserDetailPage({
   const { id } = await params;
   const { session, tenant } = await requireTenantAdmin();
 
-  const [user, orders] = await Promise.all([
-    prisma.user.findUnique({ where: { id, tenantId: tenant.id } }),
-    prisma.order.findMany({
-      where: { userId: id, tenantId: tenant.id },
-      include: { paymentProof: true, deliveryDate: true },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+  const user = await prisma.user.findUnique({ where: { id, tenantId: tenant.id } });
 
   if (!user) notFound();
 
   const isSelf = user.id === session?.user.id;
-  const totalSpent = orders
-    .filter((o) => o.status !== "CANCELLED")
-    .reduce((sum, o) => sum + Number(o.total), 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -70,14 +57,6 @@ export default async function UserDetailPage({
           <span className="text-xs text-muted-foreground">Se unió</span>
           <span className="text-sm font-medium">{dateFormatter.format(user.createdAt)}</span>
         </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-muted-foreground">Pedidos</span>
-          <span className="text-sm font-medium">{orders.length}</span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-muted-foreground">Total gastado</span>
-          <span className="text-sm font-medium">{formatPrice(totalSpent)}</span>
-        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-4 rounded-lg border p-4">
@@ -90,31 +69,6 @@ export default async function UserDetailPage({
           <span className="text-xs text-muted-foreground">
             No podés cambiar tu propio rol ni borrar tu cuenta desde acá.
           </span>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <h2 className="font-medium">Historial de compras</h2>
-        {orders.length === 0 ? (
-          <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-            Todavía no hizo ningún pedido.
-          </p>
-        ) : (
-          <OrdersTable
-            orders={orders.map((o) => ({
-              id: o.id,
-              buyerLabel: user.name || user.email,
-              isGuest: false,
-              proofUrl: o.paymentProof?.url ?? null,
-              deliveryLabel: dateFormatter.format(o.deliveryDate.date),
-              fulfillmentLabel: FULFILLMENT_TYPE_LABELS[o.fulfillmentType],
-              paymentLabel: PAYMENT_METHOD_LABELS[o.paymentMethod],
-              status: o.status,
-              needsReview: o.paymentMethod === "TRANSFER" && o.paymentProof?.status === "PENDING",
-              isNew: !o.viewedAt,
-              totalLabel: formatPrice(Number(o.total)),
-            }))}
-          />
         )}
       </div>
     </div>

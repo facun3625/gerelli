@@ -1,38 +1,37 @@
-// Contrato neutral entre el loop del agente (run-agent.ts) y el motor que
-// realmente conversa (provider-gemini.ts hoy, provider-claude.ts el día que
-// se migre). Nada acá sabe qué motor hay del otro lado — cambiar de motor es
-// agregar un archivo que implemente AgentProvider, no tocar el resto.
-
-export type AgentTool = {
-  name: string;
-  description: string;
-  // JSON Schema de los parámetros (tipo "object" con "properties"/"required").
-  parameters: Record<string, unknown>;
+export type AssistantHistoryMessage = {
+  role: "user" | "assistant";
+  content: string;
 };
 
-export type AgentToolCall = {
-  name: string;
-  arguments: Record<string, unknown>;
-  // Dato opaco específico del proveedor (ej: thoughtSignature de Gemini)
-  // que hay que devolver sin tocar en el siguiente turno — run-agent.ts no
-  // sabe ni le importa qué hay adentro, solo lo hace ida y vuelta.
-  raw?: unknown;
+export type AssistantProperty = {
+  id: string;
+  title: string;
+  operation: string;
+  price: number | null;
+  currency: string;
+  showPrice: boolean;
+  city: string;
+  neighborhood: string;
+  bedrooms: number;
+  image: string | null;
+  href: string;
 };
 
-export type AgentMessage =
-  | { role: "user"; text: string }
-  | { role: "model"; text: string }
-  | { role: "model"; toolCall: AgentToolCall }
-  | { role: "tool"; name: string; result: unknown };
+export type AssistantReply = {
+  text: string;
+  properties: AssistantProperty[];
+  // Tokens que consumió la respuesta (todas las vueltas con el proveedor)
+  tokens: number;
+};
 
-export type AgentTurn =
-  | { type: "text"; text: string }
-  | { type: "tool_calls"; calls: AgentToolCall[] };
+export type AssistantProviderInput = {
+  apiKey: string;
+  model: string;
+  instructions: string;
+  history: AssistantHistoryMessage[];
+};
 
-export interface AgentProvider {
-  respond(params: {
-    systemPrompt: string;
-    history: AgentMessage[];
-    tools: AgentTool[];
-  }): Promise<AgentTurn>;
-}
+export const DEFAULT_AI_MODELS = {
+  openai: "gpt-4.1-mini",
+  gemini: "gemini-2.5-flash",
+} as const;

@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 
 import { getCurrentTenant } from "@/lib/tenant";
 import { getStoreSettings } from "@/lib/settings";
-import { isDemoSubdomain } from "@/lib/demo";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage({
@@ -31,7 +30,7 @@ export default async function LoginPage({
           <div className="flex flex-col items-center gap-0.5">
             <h1 className="text-xl font-semibold">{onboarded ? "¡Tu tienda ya está lista!" : "Bienvenido"}</h1>
             <p className="text-sm text-muted-foreground">
-              {onboarded ? "Iniciá sesión con la misma cuenta para entrar a tu panel de administración" : "Ingresá para hacer tu pedido"}
+              {onboarded ? "Iniciá sesión con la misma cuenta para entrar a tu panel de administración" : "Ingresá a tu cuenta"}
             </p>
           </div>
         </div>
@@ -41,7 +40,7 @@ export default async function LoginPage({
         <div className="px-6 py-6">
           {agentDisabled === "1" && <p role="alert" className="mb-4 text-sm text-destructive">Tu acceso de agente está deshabilitado. Contactá al administrador de la inmobiliaria.</p>}
           <Suspense>
-            <LoginForm tenantId={tenant.id} isDemo={isDemoSubdomain(tenant.subdomain)} />
+            <LoginForm tenantId={tenant.id} />
           </Suspense>
         </div>
       </div>

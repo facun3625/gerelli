@@ -3,7 +3,6 @@
 import { useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
-import { LockIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,29 +14,14 @@ import { removeSeoImage, updateSeoSettings } from "./actions";
 export function SeoSettingsForm({
   settings,
   storeName,
-  domainVerified,
 }: {
   settings: SeoSettings;
   storeName: string;
-  domainVerified: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [ogImagePreview, setOgImagePreview] = useState<string | null>(settings.ogImageUrl);
   const inputRef = useRef<HTMLInputElement>(null);
   const [removePending, startRemoveTransition] = useTransition();
-
-  if (!domainVerified) {
-    return (
-      <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-8 text-center">
-        <LockIcon className="size-5 text-muted-foreground" />
-        <p className="text-sm font-medium">Solo se puede usar después de verificar tu dominio propio</p>
-        <p className="max-w-sm text-xs text-muted-foreground">
-          El título, la descripción y la imagen que se comparten en redes tienen que apuntar a tu dominio —
-          verificalo primero en la pestaña &quot;Dominio propio&quot; y esta sección se destraba sola.
-        </p>
-      </div>
-    );
-  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

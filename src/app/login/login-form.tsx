@@ -1,16 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
-import { Loader2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD } from "@/lib/demo";
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -95,52 +93,18 @@ function FloatingInput({
   );
 }
 
-export function LoginForm({ tenantId, isDemo }: { tenantId: string; isDemo?: boolean }) {
+export function LoginForm({ tenantId }: { tenantId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // En la demo, el objetivo es siempre el panel — no tiene sentido llevar a
-  // un prospecto de vuelta al carrito o a donde sea que haya venido.
-  const callbackUrl = isDemo ? "/admin" : (searchParams.get("callbackUrl") ?? "/");
-  const magicToken = searchParams.get("token");
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
 
   const [loading, setLoading] = useState(false);
-  const [autoLoggingIn, setAutoLoggingIn] = useState(!!magicToken);
-  const [loginEmail, setLoginEmail] = useState(isDemo ? DEMO_ADMIN_EMAIL : "");
-  const [loginPassword, setLoginPassword] = useState(isDemo ? DEMO_ADMIN_PASSWORD : "");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
 
   const [registerName, setRegisterName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
-
-  // Viene de /registro/datos justo después de crear la tienda: un link de
-  // un solo uso que loguea sin pedir la contraseña que recién escribió (el
-  // cookie de sesión de urbi.com.ar no puede viajar solo al subdominio
-  // nuevo). Si falla o ya se usó, cae de vuelta al formulario normal.
-  //
-  // El ref evita que React (StrictMode en dev, monta-desmonta-remonta el
-  // efecto) dispare esto dos veces — el token es de un solo uso, así que la
-  // segunda vez fallaría con CredentialsSignin aunque la primera ya haya
-  // entrado bien.
-  const magicTokenUsed = useRef(false);
-  useEffect(() => {
-    if (!magicToken || magicTokenUsed.current) return;
-    magicTokenUsed.current = true;
-    (async () => {
-      const result = await signIn("credentials", {
-        token: magicToken,
-        scope: "magic-token",
-        redirect: false,
-      });
-      if (result?.error) {
-        setAutoLoggingIn(false);
-        toast.error("El link ya venció — ingresá con tu contraseña.");
-        return;
-      }
-      router.push(callbackUrl);
-      router.refresh();
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [magicToken]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -195,35 +159,6 @@ export function LoginForm({ tenantId, isDemo }: { tenantId: string; isDemo?: boo
     }
     router.push(callbackUrl);
     router.refresh();
-  }
-
-  if (autoLoggingIn) {
-    return (
-      <div className="flex w-full flex-col items-center gap-3 py-6 text-center">
-        <Loader2Icon className="size-6 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">Entrando a tu tienda...</p>
-      </div>
-    );
-  }
-
-  // Tienda de demostración: un solo camino, ya completado — nada de Google
-  // ni "Crear cuenta", para que un prospecto no termine armándose una cuenta
-  // de cliente por error en vez de ver el panel.
-  if (isDemo) {
-    return (
-      <div className="flex w-full flex-col gap-4">
-        <p className="text-center text-xs text-muted-foreground">
-          Datos de acceso ya completados — solo tocá &quot;Ingresar&quot;.
-        </p>
-        <form onSubmit={handleLogin} className="flex flex-col gap-3">
-          <FloatingInput id="login-email" label="Email" type="email" required value={loginEmail} onChange={setLoginEmail} />
-          <FloatingInput id="login-password" label="Contraseña" type="password" required value={loginPassword} onChange={setLoginPassword} />
-          <Button type="submit" disabled={loading} size="lg" className="mt-1 w-full rounded-full">
-            {loading ? "Ingresando..." : "Ingresar al panel"}
-          </Button>
-        </form>
-      </div>
-    );
   }
 
   return (
