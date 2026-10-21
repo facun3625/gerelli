@@ -55,6 +55,7 @@ model Tenant {
   emailLogs       EmailLog[]
   whatsappLogs    WhatsappLog[]
   aiConversations EstateAiConversation[]
+  mlLocations     EstateMlLocation[]
 }
 
 // ---------- Auth ----------
@@ -507,8 +508,41 @@ model EstateListing {
   status     String         @default("AVAILABLE")
   property   EstateProperty @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Cascade)
 
+  // ---- Sincronización con Mercado Libre (un item de ML = una oferta) ----
+  // null = nunca se publicó. mlStatus refleja el status que devuelve ML
+  // (active | paused | closed), no el status comercial de arriba.
+  mlItemId       String?
+  mlPermalink    String?
+  mlCategoryId   String?
+  mlListingTypeId String?  @default("silver")
+  mlStatus       String?
+  mlLastSyncedAt DateTime?
+  mlLastError    String?
+
   @@unique([propertyId, operation])
   @@index([tenantId, status])
+  @@index([mlItemId])
+}
+
+// Mapeo manual (una vez por ciudad/barrio) entre el texto libre que usa
+// EstateProperty.city/neighborhood y el ID de ubicación de Mercado Libre
+// (classified_locations) — ML exige ese ID para publicar, no acepta texto
+// libre. Se resuelve a mano desde /admin/configuracion → Mercado Libre y
+// se reutiliza para todas las propiedades de esa ciudad/barrio.
+model EstateMlLocation {
+  id              String   @id @default(cuid())
+  tenantId        String
+  city            String
+  neighborhood    String   @default("")
+  mlNeighborhoodId String?
+  mlCityId        String
+  mlCityName      String
+  mlStateId       String
+  mlStateName     String
+  createdAt       DateTime @default(now())
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, city, neighborhood])
 }
 
 // Catálogos por tenant para los selectores del alta de propiedades —

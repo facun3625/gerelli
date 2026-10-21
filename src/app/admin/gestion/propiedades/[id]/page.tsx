@@ -2,9 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, BadgeDollarSignIcon, ImageIcon, MapPinIcon, Tags, TextIcon } from "lucide-react";
 import { requireTenantAdmin } from "@/lib/require-admin";
+import { prisma } from "@/lib/prisma";
 import { estateRows, estateOptions } from "@/lib/estate/data";
 import { RecordForm } from "@/components/estate/record-form";
 import { SectionNav } from "@/components/estate/section-nav";
+import { getMercadoLibreSettings } from "@/lib/mercadolibre/settings";
+import { MercadoLibrePanel } from "./mercadolibre-panel";
 
 const NAV_ITEMS = [
   { id: "section-publicacion", label: "Publicación", icon: <TextIcon className="size-4" /> },
@@ -20,9 +23,15 @@ export default async function EditarPropiedadPage({
 }) {
   const { tenant } = await requireTenantAdmin();
   const { id } = await params;
-  const [options, [record]] = await Promise.all([
+  const [options, [record], mlSettings, mlListings] = await Promise.all([
     estateOptions(tenant.id),
     estateRows("propiedades", tenant.id, "", 0, id),
+    getMercadoLibreSettings(tenant.id),
+    prisma.estateListing.findMany({
+      where: { propertyId: id, tenantId: tenant.id },
+      select: { id: true, operation: true, mlItemId: true, mlPermalink: true, mlStatus: true, mlLastError: true, mlLastSyncedAt: true },
+      orderBy: { operation: "asc" },
+    }),
   ]);
   if (!record) notFound();
 
@@ -73,6 +82,14 @@ export default async function EditarPropiedadPage({
           />
         </section>
       </div>
+      <MercadoLibrePanel
+        propertyId={record.id}
+        connected={mlSettings.connected}
+        listings={mlListings.map((l) => ({
+          ...l,
+          mlLastSyncedAt: l.mlLastSyncedAt ? l.mlLastSyncedAt.toISOString() : null,
+        }))}
+      />
     </div>
   );
 }
