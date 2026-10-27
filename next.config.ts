@@ -28,12 +28,12 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
       },
       {
-        // Fotos/videos de propiedades (Cloudflare R2). El bucket es único
-        // pero el subdominio pub-*.r2.dev es aleatorio por bucket, y el día
-        // que se conecte un dominio propio (cdn.tudominio.com) va a haber
+        // Fotos/videos de propiedades (Cloudflare R2, bucket "gerelli"). El
+        // subdominio pub-*.r2.dev es aleatorio por bucket, y el día que se
+        // conecte un dominio propio (cdn.gerellicorrenti.com.ar) va a haber
         // que agregarlo acá también.
         protocol: "https",
-        hostname: "pub-5622ff68fed3445a96d060a88000cedf.r2.dev",
+        hostname: "pub-f59926e980074152ab17e8fa8e9ffa0a.r2.dev",
       },
     ],
   },
