@@ -24,7 +24,11 @@ function safeNext(value: string | null) {
 export async function GET(request: NextRequest) {
   const response = NextResponse.redirect(safeNext(request.nextUrl.searchParams.get("next")));
   for (const cookie of request.cookies.getAll()) {
-    if (cookie.name.includes("authjs.session-token") || cookie.name.includes("next-auth.session-token")) {
+    if (
+      cookie.name.includes("gerelli.session-token") ||
+      cookie.name.includes("authjs.session-token") ||
+      cookie.name.includes("next-auth.session-token")
+    ) {
       // cookies().delete(name) no manda el atributo Secure — para un
       // nombre con prefijo __Secure-/__Host- (el caso en producción, HTTPS)
       // el navegador rechaza en silencio cualquier Set-Cookie de ese nombre

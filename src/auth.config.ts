@@ -23,11 +23,30 @@ declare module "@auth/core/jwt" {
   }
 }
 
+// Nombre propio para la cookie de sesión: con el default
+// ("authjs.session-token") cualquier otra app Auth.js corriendo en
+// localhost (las cookies no distinguen puerto) pisa o comparte la cookie,
+// y como está cifrada con otro AUTH_SECRET falla con JWTSessionError
+// "no matching decryption secret".
+const secureCookies = process.env.NODE_ENV === "production";
+export const SESSION_COOKIE_NAME = `${secureCookies ? "__Secure-" : ""}gerelli.session-token`;
+
 // Config compartida entre el runtime completo (auth.ts) y el middleware,
 // que corre en Edge y no puede cargar Prisma/bcrypt.
 export default {
   providers: [],
   trustHost: true,
+  cookies: {
+    sessionToken: {
+      name: SESSION_COOKIE_NAME,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: secureCookies,
+      },
+    },
+  },
   pages: {
     signIn: "/login",
   },

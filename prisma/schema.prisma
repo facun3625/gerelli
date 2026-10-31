@@ -419,10 +419,13 @@ model EstateProperty {
   garages        Int                      @default(0)
   coveredArea    Decimal?                 @db.Decimal(12, 2)
   totalArea      Decimal?                 @db.Decimal(12, 2)
-  // Para el pin en /mapa — opcional, se carga a mano desde el admin (no hay
-  // geocoding automático de la dirección todavía).
+  // Para el pin en /mapa, elegido a mano en el buscador de dirección del
+  // admin (Nominatim/OpenStreetMap). mapAddress guarda el texto resuelto en
+  // ese momento, para mostrarlo después sin depender de una geocodificación
+  // inversa (que puede devolver algo más genérico, p.ej. solo la ciudad).
   latitude       Decimal?                 @db.Decimal(10, 7)
   longitude      Decimal?                 @db.Decimal(10, 7)
+  mapAddress     String?
   published      Boolean                  @default(false)
   featured       Boolean                  @default(false)
   // Orden manual entre las destacadas (menor = primero) — ver

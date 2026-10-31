@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deploy de urbi en el VPS. Correr desde /root/urbi/urbi:
+# Deploy de Gerelli en el VPS. Correr desde /root/gerelli/gerelli:
 #   bash deploy.sh
 set -e
 
@@ -23,9 +23,9 @@ echo "== reemplazar build y reiniciar =="
 rm -rf .next-old
 [ -d .next ] && mv .next .next-old
 mv .next-build .next
-pm2 restart urbi
+pm2 restart gerelli
 rm -rf .next-old
 
 echo "== listo — últimas líneas del log =="
 sleep 2
-pm2 logs urbi --lines 15 --nostream
+pm2 logs gerelli --lines 15 --nostream

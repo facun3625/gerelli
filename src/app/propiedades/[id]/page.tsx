@@ -14,6 +14,7 @@ import { FavoriteButton } from "@/components/estate/favorite-button";
 import { PropertyCard } from "@/components/estate/property-card";
 import { PropertyShareButtons } from "@/components/estate/property-share-buttons";
 import { VideoPlayer } from "@/components/estate/video-player";
+import { DevelopmentMapLoader } from "@/components/estate/development-map-loader";
 import { money, labels } from "@/lib/estate/modules";
 import { toWhatsAppMessageLink } from "@/lib/social-links";
 async function getProperty(id: string) {
@@ -219,6 +220,19 @@ export default async function PropertyPage({
                 <div className="mt-6">
                   <VideoPlayer url={p.videoUrl} />
                 </div>
+              )}
+              {p.latitude && p.longitude && (
+                <section className="mt-6 space-y-3">
+                  <h2 className="text-xl font-semibold">Ubicación</h2>
+                  <div className="relative z-0 isolate h-64 overflow-hidden rounded-xl border">
+                    <DevelopmentMapLoader
+                      latitude={Number(p.latitude)}
+                      longitude={Number(p.longitude)}
+                      name={p.title}
+                      address={[p.neighborhood, p.city].filter(Boolean).join(", ")}
+                    />
+                  </div>
+                </section>
               )}
               {p.development && (
                 <p className="mt-5 text-sm">

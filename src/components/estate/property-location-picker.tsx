@@ -97,21 +97,52 @@ function Recenter({ point }: { point: [number, number] }) {
 export function PropertyLocationPicker({
   initialLat,
   initialLng,
+  initialAddress,
   onDirty,
 }: {
   initialLat?: string;
   initialLng?: string;
+  initialAddress?: string;
   onDirty: () => void;
 }) {
   const initial: [number, number] | null =
     initialLat && initialLng ? [Number(initialLat), Number(initialLng)] : null;
   const [point, setPoint] = useState<[number, number] | null>(initial);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialAddress ?? "");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [searching, setSearching] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [scrollZoomEnabled, setScrollZoomEnabled] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Propiedades migradas que tienen coordenadas pero todavía no una
+  // dirección guardada (de antes de agregar este campo): completamos el
+  // buscador con una geocodificación inversa como mejor esfuerzo, para que
+  // al guardar quede ya el texto. Si la propiedad ya tiene mapAddress
+  // guardado, usamos ese texto directamente y no pisamos lo que el usuario
+  // ya dejó cargado.
+  useEffect(() => {
+    if (!initial || initialAddress) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${initial[0]}&lon=${initial[1]}`,
+        );
+        const data = (await res.json()) as Suggestion;
+        if (!cancelled && data && !("error" in data)) {
+          setQuery(shortLabel(data));
+        }
+      } catch {
+        // Sin conexión o rate-limit: el pin ya está puesto en el mapa, solo
+        // queda vacío el texto del buscador.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function pick(lat: number, lng: number) {
     setPoint([lat, lng]);
@@ -220,6 +251,7 @@ export function PropertyLocationPicker({
 
       <input type="hidden" name="latitude" value={point ? point[0].toFixed(7) : ""} readOnly />
       <input type="hidden" name="longitude" value={point ? point[1].toFixed(7) : ""} readOnly />
+      <input type="hidden" name="mapAddress" value={point ? query : ""} readOnly />
 
       <details
         open={showManual}

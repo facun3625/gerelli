@@ -122,6 +122,10 @@ export const propertySchema = z
     address: requiredText,
     latitude: optionalCoordinate,
     longitude: optionalCoordinate,
+    mapAddress: z
+      .string()
+      .max(300)
+      .transform((v) => v || null),
     ownerId: optionalId,
     bedrooms: z.coerce.number().int().min(0).max(1000),
     bathrooms: z.coerce.number().int().min(0).max(1000),

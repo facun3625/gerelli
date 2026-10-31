@@ -322,6 +322,7 @@ export function RecordForm({
                     <PropertyLocationPicker
                       initialLat={values.latitude ? String(values.latitude) : undefined}
                       initialLng={values.longitude ? String(values.longitude) : undefined}
+                      initialAddress={values.mapAddress ? String(values.mapAddress) : undefined}
                       onDirty={markDirty}
                     />
                   ) : type === "floor-plan" ? (
