@@ -28,6 +28,7 @@ async function getDevelopment(id: string) {
     include: {
       images: { orderBy: { order: "asc" } },
       fields: { orderBy: { order: "asc" } },
+      category: { select: { name: true } },
     },
   });
   if (!development) notFound();
@@ -57,14 +58,17 @@ export default async function DevelopmentPage({
       <main className="mx-auto w-full max-w-[1440px] flex-1">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
           <Link
-            href="/emprendimientos"
+            href="/arquitectura/obras"
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            ← Volver a emprendimientos
+            ← Volver a obras
           </Link>
           <header className="public-enter mt-6">
             <div className="max-w-4xl">
               <p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">
+                {development.category
+                  ? `${development.category.name} · `
+                  : ""}
                 {STAGES[development.stage] ?? development.stage}
               </p>
               <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">

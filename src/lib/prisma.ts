@@ -9,7 +9,7 @@ const globalForPrisma = globalThis as unknown as {
 // Cambiar este identificador cuando una migración agregue campos usados por
 // el código. Next conserva globalThis entre hot reloads; sin esta marca puede
 // seguir reutilizando un cliente generado con el esquema anterior.
-const PRISMA_SCHEMA_VERSION = "20260922-post-sale-warranty";
+const PRISMA_SCHEMA_VERSION = "20261102-development-categories";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const cachedPrisma = globalForPrisma.prisma;

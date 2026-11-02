@@ -16,7 +16,7 @@ export const FAQ_CATEGORIES: { icon: LucideIcon; title: string; questions: [stri
     questions: [
       ["¿Cómo consulto por una propiedad?", "Desde la ficha de cada propiedad podés enviarnos una consulta con tus datos de contacto, o escribirnos directamente por WhatsApp."],
       ["¿Cómo coordino una visita?", "Después de tu consulta, un agente se pone en contacto para coordinar día y horario según tu disponibilidad."],
-      ["¿Atienden también emprendimientos en construcción?", "Sí, podés consultar por emprendimientos desde la sección correspondiente del sitio."],
+      ["¿Tienen estudio de arquitectura?", "Sí, además de la inmobiliaria tenemos un estudio de arquitectura. Podés ver el equipo, los servicios y nuestras obras en la sección Arquitectura del sitio."],
     ],
   },
   {

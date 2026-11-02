@@ -26,8 +26,7 @@ export async function POST(request: Request) {
     path === "/" ||
     path === "/propiedades" ||
     path.startsWith("/propiedades/") ||
-    path === "/emprendimientos" ||
-    path.startsWith("/emprendimientos/") ||
+    path.startsWith("/arquitectura/") ||
     [
       "/mapa",
       "/sobre-nosotros",

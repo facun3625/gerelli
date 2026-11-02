@@ -44,6 +44,14 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [{ source: "/uploads/:path*", destination: "/api/uploads/:path*" }];
   },
+  // Emprendimientos pasó a ser Obras, dentro de Arquitectura. Los links
+  // viejos (compartidos, indexados) siguen funcionando.
+  async redirects() {
+    return [
+      { source: "/emprendimientos", destination: "/arquitectura/obras", permanent: true },
+      { source: "/emprendimientos/:id", destination: "/arquitectura/obras/:id", permanent: true },
+    ];
+  },
   experimental: {
     // Next 16 aplica además un buffer de 10 MB en proxy. Debe coincidir con
     // el límite de Server Actions o un multipart grande llega truncado y

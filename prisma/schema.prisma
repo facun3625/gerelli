@@ -25,6 +25,7 @@ model Tenant {
   contacts               EstateContact[]
   properties             EstateProperty[]
   developments           EstateDevelopment[]
+  developmentCategories  EstateDevelopmentCategory[]
   developmentInquiries   EstateDevelopmentInquiry[]
   inquiries              EstateInquiry[]
   visits                 EstateVisit[]
@@ -328,9 +329,15 @@ model EstateDevelopment {
   formTitle          String                     @default("Consultá por este emprendimiento")
   submitLabel        String                     @default("Enviar consulta")
   published          Boolean                    @default(false)
+  // Categoría de obra (Viviendas, Edificios…), editable desde el panel.
+  // FK simple por id (no compuesta con tenantId) para que SetNull no
+  // intente anular tenantId al borrar la categoría; el tenant se valida
+  // en saveDevelopment.
+  categoryId         String?
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
   tenant             Tenant                     @relation(fields: [tenantId], references: [id])
+  category           EstateDevelopmentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   properties         EstateProperty[]
   fields             EstateDevelopmentField[]
   images             EstateDevelopmentImage[]
@@ -338,6 +345,20 @@ model EstateDevelopment {
 
   @@unique([id, tenantId])
   @@index([tenantId, published, createdAt])
+  @@index([categoryId])
+}
+
+// Categorías de obras (EstateDevelopment se muestra como "Obras" en el sitio).
+model EstateDevelopmentCategory {
+  id           String              @id @default(cuid())
+  tenantId     String
+  name         String
+  order        Int                 @default(0)
+  tenant       Tenant              @relation(fields: [tenantId], references: [id])
+  developments EstateDevelopment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
 }
 
 model EstateDevelopmentField {

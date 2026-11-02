@@ -394,8 +394,8 @@ export const modules: Record<string, Module> = {
     ],
   },
   emprendimientos: {
-    title: "Emprendimientos",
-    singular: "emprendimiento",
+    title: "Obras",
+    singular: "obra",
     description: "Agrupá propiedades de un mismo proyecto.",
     fields: [
       { name: "name", label: "Nombre", required: true },

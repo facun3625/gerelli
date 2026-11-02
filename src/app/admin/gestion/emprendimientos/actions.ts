@@ -41,6 +41,7 @@ const schema = z.object({
   formTitle: z.string().trim().min(1),
   submitLabel: z.string().trim().min(1),
   published: z.boolean(),
+  categoryId: z.string().trim().nullable(),
   fields: z.array(fieldSchema).min(1, "Agregá al menos un campo al formulario"),
   existingImages: z.array(
     z.object({ id: z.string(), order: z.number().int().nonnegative() }),
@@ -75,6 +76,7 @@ async function parseAndUpload(formData: FormData) {
     formTitle: formData.get("formTitle"),
     submitLabel: formData.get("submitLabel"),
     published: formData.get("published") === "true",
+    categoryId: String(formData.get("categoryId") ?? "").trim() || null,
     fields: JSON.parse(String(formData.get("fields") || "[]")),
     existingImages: JSON.parse(String(formData.get("existingImages") || "[]")),
     newImages: JSON.parse(String(formData.get("newImages") || "[]")),
@@ -97,6 +99,16 @@ export async function saveDevelopment(id: string | null, formData: FormData) {
     const { tenant } = await requireTenantAdmin();
     const { parsed, uploaded } = await parseAndUpload(formData);
     const { fields, existingImages } = parsed;
+    // La FK de categoría no incluye tenantId: validar acá que sea propia.
+    if (
+      parsed.categoryId &&
+      !(await prisma.estateDevelopmentCategory.findFirst({
+        where: { id: parsed.categoryId, tenantId: tenant.id },
+        select: { id: true },
+      }))
+    ) {
+      throw new ActionError("Categoría no encontrada");
+    }
     const data = {
       name: parsed.name,
       address: parsed.address,
@@ -115,6 +127,7 @@ export async function saveDevelopment(id: string | null, formData: FormData) {
       formTitle: parsed.formTitle,
       submitLabel: parsed.submitLabel,
       published: parsed.published,
+      categoryId: parsed.categoryId,
     };
     const development = await prisma.$transaction(async (tx) => {
       if (!id) {
@@ -136,7 +149,7 @@ export async function saveDevelopment(id: string | null, formData: FormData) {
       const current = await tx.estateDevelopment.findUnique({
         where: { id, tenantId: tenant.id },
       });
-      if (!current) throw new ActionError("Emprendimiento no encontrado");
+      if (!current) throw new ActionError("Obra no encontrada");
       await tx.estateDevelopmentField.deleteMany({
         where: { developmentId: id },
       });
@@ -168,11 +181,11 @@ export async function saveDevelopment(id: string | null, formData: FormData) {
       });
     });
     revalidatePath("/");
-    revalidatePath("/emprendimientos");
+    revalidatePath("/arquitectura/obras", "layout");
     revalidatePath("/admin/gestion/emprendimientos");
     return { id: development.id };
   } catch (error) {
-    return toUserError(error, "No se pudo guardar el emprendimiento");
+    return toUserError(error, "No se pudo guardar la obra");
   }
 }
 
@@ -183,11 +196,11 @@ export async function deleteDevelopment(id: string) {
       where: { id, tenantId: tenant.id },
     });
     revalidatePath("/");
-    revalidatePath("/emprendimientos");
+    revalidatePath("/arquitectura/obras", "layout");
     revalidatePath("/admin/gestion/emprendimientos");
     return { ok: true as const };
   } catch (error) {
-    return toUserError(error, "No se pudo eliminar el emprendimiento");
+    return toUserError(error, "No se pudo eliminar la obra");
   }
 }
 

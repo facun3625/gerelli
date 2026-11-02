@@ -13,6 +13,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useStoreSettings } from "@/lib/store-settings-context";
+import { ARQ_SECTIONS } from "@/lib/arquitectura";
 import {
   toWhatsAppLink,
   toInstagramLink,
@@ -38,7 +39,6 @@ export function MobileHamburgerMenu() {
     facebook,
     youtube,
     hasServices,
-    hasDevelopments,
   } = useStoreSettings();
 
   return (
@@ -65,14 +65,36 @@ export function MobileHamburgerMenu() {
               ...(hasServices
                 ? [{ href: "/servicios", label: "Servicios" }]
                 : []),
-              ...(hasDevelopments
-                ? [{ href: "/emprendimientos", label: "Emprendimientos" }]
-                : []),
               { href: "/sobre-nosotros", label: "Sobre nosotros" },
+              { href: "/arquitectura", label: "Arquitectura", children: ARQ_SECTIONS },
               { href: "/mapa", label: "Propiedades en mapa" },
               { href: "/alertas", label: "Recibir alertas" },
               { href: "#hablemos-hoy", label: "Contacto" },
             ].map((link) => {
+              if ("children" in link && link.children) {
+                return (
+                  <div key={link.href} className="flex flex-col gap-1.5">
+                    <span className="px-4 pt-1 text-xs font-semibold uppercase tracking-wider text-white/50">
+                      {link.label}
+                    </span>
+                    {link.children.map((child) => (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          "ml-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
+                          pathname.startsWith(child.href)
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-white/10 text-white hover:bg-white/20",
+                        )}
+                      >
+                        {child.label}
+                      </Link>
+                    ))}
+                  </div>
+                );
+              }
               const active =
                 link.href === "/"
                   ? pathname === "/"

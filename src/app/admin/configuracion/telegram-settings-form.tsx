@@ -79,7 +79,7 @@ export function TelegramSettingsForm({ settings }: { settings: TelegramSettings 
   return (
     <div className="flex flex-col gap-5 rounded-lg border p-4">
       <p className="text-xs text-muted-foreground">
-        Manda un aviso al grupo de Telegram del equipo apenas entra una consulta de un emprendimiento.
+        Manda un aviso al grupo de Telegram del equipo apenas entra una consulta de una obra.
         Sin esto configurado, el sitio sigue funcionando normal, solo que no manda ese aviso.
       </p>
 

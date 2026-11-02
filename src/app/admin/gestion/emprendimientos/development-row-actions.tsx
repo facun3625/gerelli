@@ -24,7 +24,7 @@ export function DevelopmentRowActions({
   const [pending, startTransition] = useTransition();
   async function remove() {
     const accepted = await confirm({
-      title: "Eliminar emprendimiento",
+      title: "Eliminar obra",
       description: `¿Querés eliminar “${name}”? Las consultas recibidas conservarán el nombre y el historial.`,
       confirmLabel: "Eliminar",
       destructive: true,
@@ -36,7 +36,7 @@ export function DevelopmentRowActions({
         toast.error(result.error);
         return;
       }
-      toast.success("Emprendimiento eliminado");
+      toast.success("Obra eliminada");
       router.push("/admin/gestion/emprendimientos");
       router.refresh();
     });

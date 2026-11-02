@@ -13,8 +13,7 @@ export function PublicAnalyticsTracker() {
       pathname === "/" ||
       pathname === "/propiedades" ||
       pathname.startsWith("/propiedades/") ||
-      pathname === "/emprendimientos" ||
-      pathname.startsWith("/emprendimientos/") ||
+      pathname.startsWith("/arquitectura/") ||
       [
         "/mapa",
         "/sobre-nosotros",

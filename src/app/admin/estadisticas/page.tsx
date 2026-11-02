@@ -27,7 +27,10 @@ const PAGE_LABELS: Record<string, string> = {
   "/contacto": "Contacto",
   "/alertas": "Recibir alertas",
   "/favoritos": "Favoritos",
-  "/emprendimientos": "Emprendimientos",
+  "/emprendimientos": "Obras (URL anterior)",
+  "/arquitectura/equipo": "Arquitectura · Equipo",
+  "/arquitectura/servicios": "Arquitectura · Servicios",
+  "/arquitectura/obras": "Arquitectura · Obras",
 };
 
 function tally(values: string[]) {
@@ -42,8 +45,8 @@ function percent(value: number, total: number) {
 function pageLabel(path: string) {
   return path.startsWith("/propiedades/")
     ? "Detalle de propiedad"
-    : path.startsWith("/emprendimientos/")
-      ? "Detalle de emprendimiento"
+    : path.startsWith("/emprendimientos/") || path.startsWith("/arquitectura/obras/")
+      ? "Detalle de obra"
       : (PAGE_LABELS[path] ?? path);
 }
 

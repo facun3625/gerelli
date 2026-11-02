@@ -57,6 +57,7 @@ type Development = {
   formTitle: string;
   submitLabel: string;
   published: boolean;
+  categoryId: string | null;
   fields: {
     label: string;
     type: FieldType;
@@ -133,10 +134,14 @@ async function optimizeImage(file: File) {
   );
 }
 
+const NO_CATEGORY = "none";
+
 export function DevelopmentEditor({
   development,
+  categories,
 }: {
   development?: Development;
+  categories: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -149,6 +154,9 @@ export function DevelopmentEditor({
     development?.descriptionColumns ?? false,
   );
   const [stage, setStage] = useState(development?.stage ?? "PROJECT");
+  const [categoryId, setCategoryId] = useState(
+    development?.categoryId ?? NO_CATEGORY,
+  );
   const [optimizing, setOptimizing] = useState(false);
   const [fields, setFields] = useState<Field[]>(
     development?.fields.map((field) => ({
@@ -230,6 +238,7 @@ export function DevelopmentEditor({
     const data = new FormData(formRef.current!);
     data.set("published", String(published));
     data.set("stage", stage);
+    data.set("categoryId", categoryId === NO_CATEGORY ? "" : categoryId);
     data.set("description", description);
     data.set("descriptionColumns", String(descriptionColumns));
     data.set(
@@ -271,7 +280,7 @@ export function DevelopmentEditor({
         toast.error(result.error);
         return;
       }
-      toast.success("Emprendimiento guardado");
+      toast.success("Obra guardada");
       router.push("/admin/gestion/emprendimientos");
       router.refresh();
     });
@@ -285,7 +294,7 @@ export function DevelopmentEditor({
     >
       <section className="grid gap-4 rounded-xl border p-5 md:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="name">Nombre del emprendimiento</Label>
+          <Label htmlFor="name">Nombre de la obra</Label>
           <Input
             id="name"
             name="name"
@@ -335,6 +344,34 @@ export function DevelopmentEditor({
             name="developer"
             defaultValue={development?.developer}
           />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label>Categoría</Label>
+          <Select
+            value={categoryId}
+            onValueChange={(value) => value && setCategoryId(value)}
+            items={[
+              { value: NO_CATEGORY, label: "Sin categoría" },
+              ...categories.map((c) => ({ value: c.id, label: c.name })),
+            ]}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_CATEGORY}>Sin categoría</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!categories.length && (
+            <p className="text-xs text-muted-foreground">
+              Creá categorías desde el listado de Obras.
+            </p>
+          )}
         </div>
         <div className="flex flex-col gap-2">
           <Label>Etapa</Label>
@@ -500,7 +537,7 @@ export function DevelopmentEditor({
               id="formTitle"
               name="formTitle"
               defaultValue={
-                development?.formTitle ?? "Consultá por este emprendimiento"
+                development?.formTitle ?? "Consultá por esta obra"
               }
               required
             />
@@ -646,7 +683,7 @@ export function DevelopmentEditor({
         disabled={pending || optimizing}
         className="self-start"
       >
-        {pending ? "Guardando…" : "Guardar emprendimiento"}
+        {pending ? "Guardando…" : "Guardar obra"}
       </Button>
     </form>
   );

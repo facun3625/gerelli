@@ -62,7 +62,7 @@ async function verifyRelations(
       where: { id_tenantId: { id: data.developmentId, tenantId } },
     }))
   )
-    throw new ActionError("Emprendimiento no encontrado");
+    throw new ActionError("Obra no encontrada");
   if (
     data.contractId &&
     !(await tx.estateContract.findUnique({

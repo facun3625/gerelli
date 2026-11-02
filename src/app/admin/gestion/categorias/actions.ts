@@ -12,10 +12,13 @@ export type CatalogKind =
   | "cities"
   | "neighborhoods"
   | "contractTypes"
-  | "propertyDestinations";
+  | "propertyDestinations"
+  | "developmentCategories";
 
 function refresh() {
   revalidatePath("/admin", "layout");
+  // Las categorías de obras se ven como filtros en el sitio público.
+  revalidatePath("/arquitectura/obras");
 }
 
 function actionError(error: unknown) {
@@ -87,6 +90,16 @@ export async function createCatalogItem(kind: CatalogKind, name: string) {
         });
         break;
       }
+      case "developmentCategories": {
+        const last = await prisma.estateDevelopmentCategory.aggregate({
+          where: { tenantId: tenant.id },
+          _max: { order: true },
+        });
+        await prisma.estateDevelopmentCategory.create({
+          data: { tenantId: tenant.id, name: value, order: (last._max.order ?? -1) + 1 },
+        });
+        break;
+      }
     }
     refresh();
     return { ok: true as const };
@@ -116,6 +129,9 @@ export async function renameCatalogItem(kind: CatalogKind, id: string, name: str
       case "propertyDestinations":
         await prisma.estatePropertyDestination.update({ where, data: { name: value } });
         break;
+      case "developmentCategories":
+        await prisma.estateDevelopmentCategory.update({ where, data: { name: value } });
+        break;
     }
     refresh();
     return { ok: true as const };
@@ -143,6 +159,9 @@ export async function deleteCatalogItem(kind: CatalogKind, id: string) {
         break;
       case "propertyDestinations":
         await prisma.estatePropertyDestination.delete({ where });
+        break;
+      case "developmentCategories":
+        await prisma.estateDevelopmentCategory.delete({ where });
         break;
     }
     refresh();

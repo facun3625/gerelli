@@ -12,18 +12,25 @@ export default async function EditDevelopmentPage({
 }) {
   const { tenant } = await requireTenantAdmin();
   const { id } = await params;
-  const development = await prisma.estateDevelopment.findUnique({
-    where: { id, tenantId: tenant.id },
-    include: {
-      fields: { orderBy: { order: "asc" } },
-      images: { orderBy: { order: "asc" } },
-    },
-  });
+  const [development, categories] = await Promise.all([
+    prisma.estateDevelopment.findUnique({
+      where: { id, tenantId: tenant.id },
+      include: {
+        fields: { orderBy: { order: "asc" } },
+        images: { orderBy: { order: "asc" } },
+      },
+    }),
+    prisma.estateDevelopmentCategory.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: { order: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
   if (!development) notFound();
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Editar emprendimiento</h1>
+        <h1 className="text-xl font-semibold">Editar obra</h1>
         <DevelopmentRowActions
           id={id}
           name={development.name}
@@ -31,6 +38,7 @@ export default async function EditDevelopmentPage({
         />
       </div>
       <DevelopmentEditor
+        categories={categories}
         development={{
           ...development,
           latitude: development.latitude?.toString() ?? null,

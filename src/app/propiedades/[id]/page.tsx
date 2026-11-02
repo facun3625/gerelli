@@ -236,7 +236,7 @@ export default async function PropertyPage({
               )}
               {p.development && (
                 <p className="mt-5 text-sm">
-                  Emprendimiento: {p.development.name}
+                  Obra: {p.development.name}
                 </p>
               )}
             </div>

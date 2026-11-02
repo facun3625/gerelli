@@ -69,7 +69,7 @@ export default async function DevelopmentInquiryPage({
             href={`/admin/gestion/emprendimientos/${inquiry.developmentId}`}
             className="inline-flex items-center gap-2 text-sm font-medium text-primary"
           >
-            Ver emprendimiento <ExternalLink className="size-4" />
+            Ver obra <ExternalLink className="size-4" />
           </Link>
         )}
       </div>

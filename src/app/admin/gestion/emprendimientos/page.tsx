@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
 import { requireTenantAdmin } from "@/lib/require-admin";
+import { CatalogList } from "@/components/estate/catalog-list";
 import { DevelopmentRowActions } from "./development-row-actions";
 
 const STAGES: Record<string, string> = {
@@ -18,30 +19,39 @@ const STAGES: Record<string, string> = {
 
 export default async function DevelopmentsAdminPage() {
   const { tenant } = await requireTenantAdmin();
-  const developments = await prisma.estateDevelopment.findMany({
-    where: { tenantId: tenant.id },
-    include: {
-      images: { orderBy: { order: "asc" }, take: 1 },
-      _count: { select: { inquiries: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const [developments, categories] = await Promise.all([
+    prisma.estateDevelopment.findMany({
+      where: { tenantId: tenant.id },
+      include: {
+        images: { orderBy: { order: "asc" }, take: 1 },
+        category: { select: { name: true } },
+        _count: { select: { inquiries: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.estateDevelopmentCategory.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: { order: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Emprendimientos</h1>
+          <h1 className="text-xl font-semibold">Obras</h1>
           <p className="text-sm text-muted-foreground">
-            Creá páginas comerciales para tus proyectos inmobiliarios.
+            Las obras del estudio. Se publican en Arquitectura → Obras.
           </p>
         </div>
         <Button
           render={<Link href="/admin/gestion/emprendimientos/nuevo" />}
           size="sm"
         >
-          Nuevo emprendimiento
+          Nueva obra
         </Button>
       </div>
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="flex flex-col gap-3">
         {developments.map((development) => {
           const summary = DOMPurify.sanitize(development.description, {
@@ -75,6 +85,9 @@ export default async function DevelopmentsAdminPage() {
                   <Badge variant="outline">
                     {STAGES[development.stage] ?? development.stage}
                   </Badge>
+                  {development.category && (
+                    <Badge variant="outline">{development.category.name}</Badge>
+                  )}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {development.city} · {development.address}
@@ -95,10 +108,17 @@ export default async function DevelopmentsAdminPage() {
         })}
         {!developments.length && (
           <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-            Todavía no cargaste emprendimientos. La sección pública permanecerá
-            oculta hasta que publiques el primero.
+            Todavía no cargaste obras. Mientras no publiques ninguna, la
+            página Obras muestra un aviso de &quot;muy pronto&quot;.
           </p>
         )}
+      </div>
+      <CatalogList
+        kind="developmentCategories"
+        title="Categorías de obras"
+        description="Viviendas, Edificios, Comercial… Aparecen como filtros en la página Obras."
+        items={categories}
+      />
       </div>
     </div>
   );

@@ -125,16 +125,16 @@ export async function EstateCatalog({ tenantId }: { tenantId: string }) {
           {!properties.length && <EmptyProperties />}
           {settings.hasDevelopments && (
             <Link
-              href="/emprendimientos"
+              href="/arquitectura/obras"
               className="group mt-16 grid overflow-hidden rounded-[2rem] px-7 py-10 shadow-xl sm:px-10 lg:grid-cols-[1fr_auto] lg:items-end lg:px-14 lg:py-14"
               style={{ backgroundColor: settings.buttonColor, color: contrastText(settings.buttonColor) }}
             >
               <div className="max-w-3xl">
-                <p className="text-xs font-semibold uppercase tracking-[.25em] opacity-65">Nuevas oportunidades</p>
-                <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-5xl">Proyectos para mirar hacia adelante.</h2>
-                <p className="mt-4 max-w-xl opacity-75">Avances de obra, ubicaciones y opciones de financiación.</p>
+                <p className="text-xs font-semibold uppercase tracking-[.25em] opacity-65">Arquitectura</p>
+                <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-5xl">Obras del estudio.</h2>
+                <p className="mt-4 max-w-xl opacity-75">Proyectos diseñados y dirigidos por nuestro estudio de arquitectura.</p>
               </div>
-              <span className="mt-8 inline-flex items-center gap-2 border-b border-current pb-1 font-semibold lg:mt-0">Explorar emprendimientos <ArrowRight className="size-4" /></span>
+              <span className="mt-8 inline-flex items-center gap-2 border-b border-current pb-1 font-semibold lg:mt-0">Explorar obras <ArrowRight className="size-4" /></span>
             </Link>
           )}
         </main>
@@ -183,13 +183,13 @@ export async function EstateCatalog({ tenantId }: { tenantId: string }) {
             <div className="grid gap-x-7 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">{propertyCards}</div>
             {!properties.length && <EmptyProperties />}
             {settings.hasDevelopments && (
-              <Link href="/emprendimientos" className="group mt-20 flex flex-col justify-between gap-8 border-y border-neutral-900 py-10 sm:flex-row sm:items-end">
+              <Link href="/arquitectura/obras" className="group mt-20 flex flex-col justify-between gap-8 border-y border-neutral-900 py-10 sm:flex-row sm:items-end">
                 <div>
-                  <p className="text-xs uppercase tracking-[.25em] text-neutral-500">Nuevas oportunidades</p>
-                  <h2 className="mt-3 text-3xl font-medium tracking-tight sm:text-5xl">Nuestros emprendimientos</h2>
-                  <p className="mt-4 text-neutral-500">Proyectos, avances de obra y opciones de financiación.</p>
+                  <p className="text-xs uppercase tracking-[.25em] text-neutral-500">Arquitectura</p>
+                  <h2 className="mt-3 text-3xl font-medium tracking-tight sm:text-5xl">Nuestras obras</h2>
+                  <p className="mt-4 text-neutral-500">Proyectos diseñados y dirigidos por nuestro estudio.</p>
                 </div>
-                <span className="inline-flex items-center gap-3 text-sm font-medium">Ver proyectos <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></span>
+                <span className="inline-flex items-center gap-3 text-sm font-medium">Ver obras <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></span>
               </Link>
             )}
           </section>
@@ -312,7 +312,7 @@ export async function EstateCatalog({ tenantId }: { tenantId: string }) {
           </div>
           {settings.hasDevelopments && (
             <Link
-              href="/emprendimientos"
+              href="/arquitectura/obras"
               className="public-enter public-enter-delay-2 group flex flex-col gap-6 overflow-hidden rounded-2xl px-6 py-7 shadow-sm transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-lg sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10 lg:py-9"
               style={{
                 backgroundColor: settings.buttonColor,
@@ -321,17 +321,17 @@ export async function EstateCatalog({ tenantId }: { tenantId: string }) {
             >
               <div className="max-w-2xl">
                 <p className="text-xs font-semibold uppercase tracking-[.2em] opacity-70">
-                  Nuevas oportunidades
+                  Arquitectura
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-                  Conocé nuestros emprendimientos
+                  Conocé nuestras obras
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed opacity-80 sm:text-base">
-                  Explorá proyectos, avances de obra, ubicaciones y opciones de financiación.
+                  Proyectos diseñados y dirigidos por nuestro estudio de arquitectura.
                 </p>
               </div>
               <span className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-current/30 px-5 py-3 text-sm font-semibold transition-colors group-hover:bg-white/15">
-                Ver emprendimientos
+                Ver obras
                 <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
               </span>
             </Link>

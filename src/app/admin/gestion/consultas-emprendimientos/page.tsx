@@ -22,7 +22,7 @@ export default async function DevelopmentInquiriesPage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-xl font-semibold">Consultas de emprendimientos</h1>
+        <h1 className="text-xl font-semibold">Consultas de obras</h1>
         <p className="text-sm text-muted-foreground">
           Seguimiento de interesados y proyecto desde el que consultaron.
         </p>
@@ -60,7 +60,7 @@ export default async function DevelopmentInquiriesPage() {
         })}
         {!inquiries.length && (
           <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-            Todavía no recibiste consultas de emprendimientos.
+            Todavía no recibiste consultas de obras.
           </p>
         )}
       </div>

@@ -108,13 +108,13 @@ const sections: Section[] = [
   },
   {
     href: "/admin/gestion/emprendimientos",
-    label: "Emprendimientos",
+    label: "Obras",
     icon: BuildingIcon,
     group: "Gestión Inmobiliaria",
   },
   {
     href: "/admin/gestion/consultas-emprendimientos",
-    label: "Consultas de emprendimientos",
+    label: "Consultas de obras",
     icon: MessageSquareTextIcon,
     group: "Gestión Inmobiliaria",
   },

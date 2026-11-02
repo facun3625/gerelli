@@ -24,7 +24,7 @@ export async function sendDevelopmentInquiry(
     include: { fields: { orderBy: { order: "asc" } } },
   });
   if (!development)
-    return { ok: false, message: "El emprendimiento ya no está disponible." };
+    return { ok: false, message: "La obra ya no está disponible." };
   const values: { label: string; value: string }[] = [];
   for (const field of development.fields) {
     const value = String(formData.get(field.id) ?? "").trim();
@@ -50,7 +50,7 @@ export async function sendDevelopmentInquiry(
     getTelegramSettings(tenant.id),
   ]);
   const text = [
-    `🏗️ <b>Nueva consulta de emprendimiento</b>`,
+    `🏗️ <b>Nueva consulta de obra</b>`,
     `<b>${escape(development.name)}</b>`,
     "",
     ...values.map(

@@ -8,9 +8,8 @@ import type { AboutMediaItem } from "@/lib/about";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-// Cards de alto fijo y ancho según la proporción de cada foto: la foto se ve
-// entera (sin recortar caras en las grupales) y la card queda llena, sin
-// bandas vacías. Click → lightbox con la misma estética que la galería de
+// Cards todas del mismo tamaño (4:3) con la foto cubriéndolas (object-cover).
+// Click → lightbox (foto entera) con la misma estética que la galería de
 // propiedades (estate/media-carousel.tsx).
 export function AboutGallery({ media }: { media: AboutMediaItem[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -71,17 +70,15 @@ export function AboutGallery({ media }: { media: AboutMediaItem[] }) {
             type="button"
             key={m.id}
             onClick={() => setSelectedIndex(index)}
-            className="group relative h-56 shrink-0 snap-start overflow-hidden rounded-2xl bg-muted shadow-sm outline-none ring-primary transition-shadow duration-200 hover:shadow-md focus-visible:ring-2 sm:h-64 lg:h-72"
+            className="group relative aspect-[4/3] w-[78%] shrink-0 snap-start overflow-hidden rounded-2xl bg-muted shadow-sm outline-none ring-primary transition-shadow duration-200 hover:shadow-md focus-visible:ring-2 sm:w-[40%] lg:w-[calc((100%_-_2.25rem)/4)]"
           >
             {m.type === "IMAGE" ? (
               <Image
                 src={m.url}
                 alt={`Foto ${index + 1}`}
-                width={800}
-                height={600}
-                sizes="(min-width: 1024px) 420px, 360px"
-                onLoad={updateScrollState}
-                className="h-full w-auto max-w-none object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                fill
+                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 40vw, 78vw"
+                className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
               />
             ) : (
               <>
@@ -90,8 +87,7 @@ export function AboutGallery({ media }: { media: AboutMediaItem[] }) {
                   muted
                   playsInline
                   preload="metadata"
-                  onLoadedMetadata={updateScrollState}
-                  className="pointer-events-none h-full w-auto max-w-none object-cover"
+                  className="pointer-events-none absolute inset-0 size-full object-cover"
                 />
                 <span className="absolute inset-0 flex items-center justify-center">
                   <span className="flex size-12 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm">
