@@ -231,9 +231,8 @@ export function orderConfirmationEmail({
 
     <table role="presentation" width="100%" style="max-width:560px;margin:14px auto 0;">
       <tr><td style="text-align:center;">
-        <a href="https://urbi.com.ar" target="_blank" style="text-decoration:none;color:${MUTED};font-size:11px;line-height:1.6;">
-          ¿Tenés un negocio? Armá tu propia tienda online como esta con
-          <img src="${appUrl ?? ""}/brand/logo.svg" alt="Urbi" height="13" style="height:13px;width:auto;vertical-align:middle;margin-left:4px;">
+        <a href="https://kubbo.com.ar" target="_blank" style="text-decoration:none;color:${MUTED};font-size:11px;line-height:1.6;">
+          Desarrollado por <strong>kubbo.com.ar</strong>
         </a>
       </td></tr>
     </table>

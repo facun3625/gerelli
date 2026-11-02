@@ -10,12 +10,24 @@ import { PromptProvider } from "@/components/admin/prompt-provider";
 import { PwaProvider } from "@/components/admin/pwa-provider";
 import { prisma } from "@/lib/prisma";
 import { requireTenantAdminWithPlan } from "@/lib/require-admin";
+import { getCurrentTenant } from "@/lib/tenant";
+import { getStoreSettings } from "@/lib/settings";
 
-export const metadata: Metadata = {
-  manifest: "/admin/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent" },
-  icons: { apple: "/admin/icon/180" },
-};
+// `icons` del hijo reemplaza entero al del layout raíz (no se mezcla), así
+// que si acá solo se definiera `apple`, el panel se quedaba sin favicon y el
+// navegador mostraba otro. Se repite el favicon del sitio.
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getCurrentTenant();
+  const faviconUrl = tenant ? (await getStoreSettings(tenant.id)).faviconUrl : null;
+  return {
+    manifest: "/admin/manifest.webmanifest",
+    appleWebApp: { capable: true, statusBarStyle: "black-translucent" },
+    icons: {
+      icon: faviconUrl ?? "/admin/icon/48",
+      apple: "/admin/icon/180",
+    },
+  };
+}
 
 const montserrat = Montserrat({
   subsets: ["latin"],

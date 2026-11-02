@@ -1,13 +1,8 @@
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { getCurrentTenant } from "@/lib/tenant";
 import { getStoreSettings } from "@/lib/settings";
-import { renderIcon, FALLBACK_ICON } from "@/lib/tenant-icon";
+import { renderIcon, loadIconSource, FALLBACK_ICON } from "@/lib/tenant-icon";
 
-// logoUrl siempre es un path local /uploads/... (todo pasa por
-// saveUploadedFile en lib/storage.ts) — si algún día se permite pegar una
-// URL externa, esto rompe en silencio y cae al ícono de Urbi por defecto.
-//
 // A propósito SIN requireTenantAdmin(): src/proxy.ts deja pasar esta ruta
 // sin sesión (ver isPublicAdminAsset ahí) porque iOS Safari busca el
 // apple-touch-icon con un mecanismo propio que no manda la cookie — el
@@ -24,12 +19,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ siz
     return new NextResponse("Tamaño inválido", { status: 400 });
   }
 
-  const { logoUrl } = await getStoreSettings(tenant.id);
-  const source = logoUrl ? path.join(process.cwd(), "public", logoUrl) : FALLBACK_ICON;
+  const { logoUrl, faviconUrl } = await getStoreSettings(tenant.id);
 
   let png: Buffer;
   try {
-    png = await renderIcon(source, px, isMaskable);
+    png = await renderIcon(await loadIconSource(faviconUrl ?? logoUrl), px, isMaskable);
   } catch {
     png = await renderIcon(FALLBACK_ICON, px, isMaskable);
   }

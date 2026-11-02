@@ -1,8 +1,7 @@
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { getCurrentTenant } from "@/lib/tenant";
 import { getStoreSettings } from "@/lib/settings";
-import { renderIcon, FALLBACK_ICON } from "@/lib/tenant-icon";
+import { renderIcon, loadIconSource, FALLBACK_ICON } from "@/lib/tenant-icon";
 
 // Ícono de la PWA del storefront (mismo patrón que admin/icon/[size]/route.ts,
 // ver ese archivo para el porqué de no exigir sesión acá).
@@ -17,12 +16,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ siz
     return new NextResponse("Tamaño inválido", { status: 400 });
   }
 
-  const { logoUrl } = await getStoreSettings(tenant.id);
-  const source = logoUrl ? path.join(process.cwd(), "public", logoUrl) : FALLBACK_ICON;
+  const { logoUrl, faviconUrl } = await getStoreSettings(tenant.id);
 
   let png: Buffer;
   try {
-    png = await renderIcon(source, px, isMaskable);
+    png = await renderIcon(await loadIconSource(faviconUrl ?? logoUrl), px, isMaskable);
   } catch {
     png = await renderIcon(FALLBACK_ICON, px, isMaskable);
   }

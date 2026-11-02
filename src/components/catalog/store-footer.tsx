@@ -267,24 +267,14 @@ export function StoreFooter() {
         </div>
 
         <div className="mx-auto mt-10 flex w-full max-w-[1440px] flex-wrap items-center justify-center gap-2 border-t border-current/10 px-4 pt-6 text-center text-sm text-current/60 lg:px-8">
-          <span className="hidden lg:inline">
-            Gestioná tu inmobiliaria y publicá tus propiedades con
-          </span>
-          <span className="lg:hidden">Tu inmobiliaria con</span>
+          <span>Desarrollado por</span>
           <a
-            href="https://urbi.com.ar"
+            href="https://kubbo.com.ar"
             target="_blank"
             rel="noreferrer"
-            className="transition-opacity hover:opacity-80"
-            aria-label="Conocé urbi.com.ar"
+            className="font-semibold text-current/80 transition-opacity hover:opacity-80"
           >
-            <Image
-              src="/brand/logo.svg"
-              alt="Urbi"
-              width={595}
-              height={180}
-              className="h-5 w-auto"
-            />
+            kubbo.com.ar
           </a>
         </div>
       </footer>
@@ -295,9 +285,9 @@ export function StoreFooter() {
 function FooterCredit({ minimal = false }: { minimal?: boolean }) {
   return (
     <div className={`${minimal ? "text-neutral-400" : "border-t border-current/10 pt-6 text-current/55"} flex flex-wrap items-center justify-center gap-2 text-center text-sm`}>
-      <span>Tu inmobiliaria con</span>
-      <a href="https://urbi.com.ar" target="_blank" rel="noreferrer" className="transition-opacity hover:opacity-80" aria-label="Conocé urbi.com.ar">
-        <Image src="/brand/logo.svg" alt="Urbi" width={595} height={180} className="h-5 w-auto" />
+      <span>Desarrollado por</span>
+      <a href="https://kubbo.com.ar" target="_blank" rel="noreferrer" className="font-semibold transition-opacity hover:opacity-80">
+        kubbo.com.ar
       </a>
     </div>
   );
