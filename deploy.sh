@@ -17,6 +17,11 @@ npx prisma generate
 
 echo "== build en paralelo (la tienda sigue arriba con el build anterior) =="
 rm -rf .next-build
+# tsconfig incluye .next/types: son los tipos del build que está corriendo y
+# todavía referencian rutas que este deploy pudo haber borrado (pasó con
+# /emprendimientos → "Cannot find module"). El servidor no los usa en
+# runtime, así que se pueden borrar sin cortar el sitio.
+rm -rf .next/types .next/dev/types
 NEXT_DIST_DIR=.next-build npm run build
 
 echo "== reemplazar build y reiniciar =="
