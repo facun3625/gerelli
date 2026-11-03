@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { Building2, MapPin, MessageCircle, Pencil } from "lucide-react";
+import { MapPin, MessageCircle, Pencil } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { getCurrentTenant } from "@/lib/tenant";
@@ -14,6 +14,7 @@ import { FavoriteButton } from "@/components/estate/favorite-button";
 import { PropertyCard } from "@/components/estate/property-card";
 import { PropertyShareButtons } from "@/components/estate/property-share-buttons";
 import { VideoPlayer } from "@/components/estate/video-player";
+import { PropertyGallery } from "@/components/estate/property-gallery";
 import { DevelopmentMapLoader } from "@/components/estate/development-map-loader";
 import { money, labels } from "@/lib/estate/modules";
 import { toWhatsAppMessageLink } from "@/lib/social-links";
@@ -142,41 +143,7 @@ export default async function PropertyPage({
           </div>
           <div className="mt-6 grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] xl:gap-10">
             <div className="min-w-0">
-              <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted sm:aspect-[16/10]">
-                {p.media[0] ? (
-                  <Image
-                    src={p.media[0].url}
-                    alt={p.title}
-                    fill
-                    priority
-                    sizes="(max-width:1024px) 100vw, 700px"
-                    className="object-cover"
-                  />
-                ) : (
-                  <Building2 className="absolute left-1/2 top-1/2 size-12 -translate-x-1/2 -translate-y-1/2 text-muted-foreground" />
-                )}
-              </div>
-              {p.media.length > 1 && (
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
-                  {p.media.slice(1).map((m) => (
-                    <a
-                      key={m.id}
-                      href={m.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted outline-none ring-primary transition duration-200 hover:opacity-90 focus-visible:ring-2"
-                    >
-                      <Image
-                        src={m.url}
-                        alt={p.title}
-                        fill
-                        sizes="220px"
-                        className="object-cover"
-                      />
-                    </a>
-                  ))}
-                </div>
-              )}
+              <PropertyGallery images={p.media.map((m) => ({ id: m.id, url: m.url }))} title={p.title} />
               <div className="my-6 grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
                 {[
                   ["Dormitorios", p.bedrooms],
