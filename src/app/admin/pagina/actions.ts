@@ -10,6 +10,7 @@ import { saveUploadedFile } from "@/lib/storage";
 import { saveTextSetting, saveImageSetting, saveFaviconSetting } from "@/lib/settings-storage";
 import { CATALOG_FILTER_KEYS, CATALOG_FILTER_LABELS } from "@/lib/estate/catalog-filters";
 import { STORE_TEMPLATES } from "./templates";
+import { ARQ_SETTINGS_KEY, arqContentSchema } from "@/lib/arquitectura";
 
 // ---------- Identidad (nombre, logo, favicon, textos del sitio) ----------
 
@@ -393,4 +394,58 @@ async function runReorderAboutMedia(orderedIds: string[]) {
   revalidatePath("/sobre-nosotros");
   revalidatePath("/admin/pagina");
   return { ok: true as const };
+}
+
+// ---------- Arquitectura (Equipo, Servicios, portada de Obras) ----------
+
+export async function saveArqContent(json: string) {
+  try {
+    const { tenant } = await requireTenantAdmin();
+    let raw: unknown;
+    try {
+      raw = JSON.parse(json);
+    } catch {
+      throw new ActionError("Contenido inválido");
+    }
+    const parsed = arqContentSchema.safeParse(raw);
+    if (!parsed.success) throw new ActionError("Revisá los textos: alguno es demasiado largo.");
+    await prisma.settings.upsert({
+      where: { tenantId_key: { tenantId: tenant.id, key: ARQ_SETTINGS_KEY } },
+      update: { value: JSON.stringify(parsed.data) },
+      create: { tenantId: tenant.id, key: ARQ_SETTINGS_KEY, value: JSON.stringify(parsed.data) },
+    });
+    revalidatePath("/arquitectura", "layout");
+    revalidatePath("/admin/pagina");
+    return { ok: true as const };
+  } catch (err) {
+    return toUserError(err, "No se pudo guardar");
+  }
+}
+
+export async function resetArqContent() {
+  try {
+    const { tenant } = await requireTenantAdmin();
+    await prisma.settings.deleteMany({ where: { tenantId: tenant.id, key: ARQ_SETTINGS_KEY } });
+    revalidatePath("/arquitectura", "layout");
+    revalidatePath("/admin/pagina");
+    return { ok: true as const };
+  } catch (err) {
+    return toUserError(err, "No se pudo restablecer");
+  }
+}
+
+// Sube una foto y devuelve la URL; queda en uso recién cuando se guarda el
+// contenido con saveArqContent.
+export async function uploadArqImage(formData: FormData) {
+  try {
+    await requireTenantAdmin();
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) throw new ActionError("Elegí una imagen");
+    if (!file.type.startsWith("image/")) throw new ActionError("El archivo debe ser una imagen");
+    if (file.size > 15 * 1024 * 1024) throw new ActionError("La imagen no puede pesar más de 15 MB");
+    const url = await saveUploadedFile(file, "arquitectura");
+    return { ok: true as const, url };
+  } catch (err) {
+    return toUserError(err, "No se pudo subir la imagen");
+  }
 }

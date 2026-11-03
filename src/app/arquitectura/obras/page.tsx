@@ -11,6 +11,8 @@ import { ArquitecturaContact } from "@/components/arquitectura/arquitectura-cont
 import { DevelopmentCard } from "@/components/estate/development-card";
 import { getCurrentTenant } from "@/lib/tenant";
 import { getStoreSettings } from "@/lib/settings";
+import { getArqContent } from "@/lib/arquitectura-content";
+import { ArqEditButton } from "@/components/arquitectura/arq-edit-button";
 
 export const metadata = {
   title: "Obras · Arquitectura",
@@ -26,7 +28,7 @@ export default async function ArquitecturaObrasPage({
   if (!tenant) notFound();
   const { categoria } = await searchParams;
 
-  const [settings, developments, categories] = await Promise.all([
+  const [settings, developments, categories, arq] = await Promise.all([
     getStoreSettings(tenant.id),
     prisma.estateDevelopment.findMany({
       where: { tenantId: tenant.id, published: true },
@@ -43,6 +45,7 @@ export default async function ArquitecturaObrasPage({
       orderBy: { order: "asc" },
       select: { id: true, name: true },
     }),
+    getArqContent(tenant.id),
   ]);
 
   const activeCategory = categories.find((c) => c.id === categoria) ?? null;
@@ -56,10 +59,15 @@ export default async function ArquitecturaObrasPage({
       <ArquitecturaHeader
         active="/arquitectura/obras"
         title="Obras"
-        subtitle="Proyectos diseñados y dirigidos por el estudio."
+        subtitle={arq.obras.subtitle}
+        image={arq.obras.heroImage}
       />
       <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col bg-background">
         <div className="flex flex-col gap-16 px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+          <div className="-mb-8 flex justify-end gap-2 empty:hidden lg:-mb-12">
+            <ArqEditButton tenantId={tenant.id} href="/admin/pagina?tab=arquitectura" label="Editar portada" />
+            <ArqEditButton tenantId={tenant.id} href="/admin/gestion/emprendimientos" label="Gestionar obras" />
+          </div>
           <div className="flex flex-col gap-8">
             {categories.length > 0 && (
               <div className="flex flex-wrap justify-center gap-2" aria-label="Filtrar por categoría">

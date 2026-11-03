@@ -11,6 +11,7 @@ import { MediaCarousel } from "@/components/estate/media-carousel";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTenant } from "@/lib/tenant";
 import { DevelopmentInquiryForm } from "../development-inquiry-form";
+import { ArqEditButton } from "@/components/arquitectura/arq-edit-button";
 
 const STAGES: Record<string, string> = {
   PROJECT: "Proyecto",
@@ -57,12 +58,19 @@ export default async function DevelopmentPage({
       <StoreHero />
       <main className="mx-auto w-full max-w-[1440px] flex-1">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
-          <Link
-            href="/arquitectura/obras"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Volver a obras
-          </Link>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Link
+              href="/arquitectura/obras"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Volver a obras
+            </Link>
+            <ArqEditButton
+              tenantId={development.tenantId}
+              href={`/admin/gestion/emprendimientos/${development.id}`}
+              label="Editar obra"
+            />
+          </div>
           <header className="public-enter mt-6">
             <div className="max-w-4xl">
               <p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">

@@ -11,6 +11,8 @@ import { ContactForm } from "./contact-form";
 import { SocialForm } from "./social-form";
 import { FooterForm } from "./footer-form";
 import { CatalogFiltersForm } from "./catalog-filters-form";
+import { ArquitecturaForm } from "./arquitectura-form";
+import { getArqContent } from "@/lib/arquitectura-content";
 
 const VALID_TABS = new Set([
   "template",
@@ -18,6 +20,7 @@ const VALID_TABS = new Set([
   "home",
   "buscador",
   "nosotros",
+  "arquitectura",
   "contacto",
   "redes",
   "footer",
@@ -31,11 +34,12 @@ export default async function PaginaPage({
   const { tenant } = await requireTenantAdmin();
   const { tab } = await searchParams;
   const initialTab = tab && VALID_TABS.has(tab) ? tab : "template";
-  const [settings, aboutContent, catalogFilters, catalogFilterLabels] = await Promise.all([
+  const [settings, aboutContent, catalogFilters, catalogFilterLabels, arqContent] = await Promise.all([
     getStoreSettings(tenant.id),
     getAboutContent(tenant.id),
     getCatalogFilterSettings(tenant.id),
     getCatalogFilterLabels(tenant.id),
+    getArqContent(tenant.id),
   ]);
 
   return (
@@ -63,6 +67,9 @@ export default async function PaginaPage({
           </TabsTrigger>
           <TabsTrigger value="nosotros" className="flex-1">
             Nosotros
+          </TabsTrigger>
+          <TabsTrigger value="arquitectura" className="flex-1">
+            Arquitectura
           </TabsTrigger>
           <TabsTrigger value="contacto" className="flex-1">
             Contacto
@@ -97,6 +104,10 @@ export default async function PaginaPage({
 
         <TabsContent value="nosotros">
           <AboutUsForm content={aboutContent} />
+        </TabsContent>
+
+        <TabsContent value="arquitectura">
+          <ArquitecturaForm key={JSON.stringify(arqContent)} content={arqContent} />
         </TabsContent>
 
         <TabsContent value="contacto">
