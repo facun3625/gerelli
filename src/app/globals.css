@@ -831,3 +831,11 @@
 .store-template-minimal .public-content-page > section:nth-of-type(2) div > div {
   border-color: #e5e5e5;
 }
+
+/* Leaflet usa z-index 400–1000 en sus capas y controles; sin un contexto de
+   apilamiento propio, el mapa queda por encima del botón flotante del
+   asistente (z-50), del menú desplegable y de los modales. Con isolation
+   esos z-index quedan encerrados dentro del mapa. */
+.leaflet-container {
+  isolation: isolate;
+}
