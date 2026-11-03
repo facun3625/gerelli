@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useConfirm } from "@/components/admin/confirm-provider";
+import { SearchableSelect } from "@/components/estate/searchable-select";
 import {
   updateMercadoLibreCredentials,
   disconnectMercadoLibre,
@@ -197,6 +198,11 @@ function LocationMappingRow({ row }: { row: LocationRow }) {
   const [pending, startTransition] = useTransition();
   const confirm = useConfirm();
 
+  useEffect(() => {
+    if (editing) void loadStates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
+
   async function loadStates() {
     if (states) return;
     setLoadingStates(true);
@@ -212,8 +218,10 @@ function LocationMappingRow({ row }: { row: LocationRow }) {
   async function onStateChange(id: string) {
     setStateId(id);
     setCityId("");
+    setNeighborhoodId("");
     setCities(null);
     setNeighborhoods(null);
+    if (!id) return;
     setLoadingCities(true);
     try {
       setCities(await fetchMlCities(id));
@@ -228,6 +236,7 @@ function LocationMappingRow({ row }: { row: LocationRow }) {
     setCityId(id);
     setNeighborhoodId("");
     setNeighborhoods(null);
+    if (!id) return;
     setLoadingNeighborhoods(true);
     try {
       setNeighborhoods(await fetchMlNeighborhoods(id));
@@ -310,42 +319,61 @@ function LocationMappingRow({ row }: { row: LocationRow }) {
       </div>
 
       {editing && (
-        <div className="mt-3 flex flex-wrap items-end gap-3">
-          <select
-            className="h-9 rounded-md border bg-transparent px-2 text-sm"
-            value={stateId}
-            onFocus={() => void loadStates()}
-            onChange={(e) => void onStateChange(e.target.value)}
-          >
-            <option value="">{loadingStates ? "Cargando..." : "Provincia"}</option>
-            {states?.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <select className="h-9 rounded-md border bg-transparent px-2 text-sm" value={cityId} disabled={!stateId} onChange={(e) => void onCityChange(e.target.value)}>
-            <option value="">{loadingCities ? "Cargando..." : "Ciudad"}</option>
-            {cities?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <select className="h-9 rounded-md border bg-transparent px-2 text-sm" value={neighborhoodId} disabled={!cityId} onChange={(e) => setNeighborhoodId(e.target.value)}>
-            <option value="">{loadingNeighborhoods ? "Cargando..." : "Barrio (opcional)"}</option>
-            {neighborhoods?.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.name}
-              </option>
-            ))}
-          </select>
-          <Button type="button" size="sm" onClick={save} disabled={pending}>
-            Guardar
-          </Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => setEditing(false)}>
-            Cancelar
-          </Button>
+        <div className="mt-3 flex flex-col gap-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
+              Provincia
+              <SearchableSelect
+                key={`state-${states ? "ok" : "loading"}`}
+                name="mlStateId"
+                placeholder={loadingStates ? "Cargando…" : "Buscar provincia…"}
+                disabled={!states}
+                defaultValue={stateId}
+                options={(states ?? []).map((s) => ({ id: s.id, label: s.name }))}
+                onChange={(id) => void onStateChange(id)}
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
+              Ciudad
+              <SearchableSelect
+                key={`city-${stateId}-${cities ? "ok" : "loading"}`}
+                name="mlCityId"
+                placeholder={loadingCities ? "Cargando…" : stateId ? "Buscar ciudad…" : "Elegí la provincia"}
+                disabled={!cities}
+                defaultValue={cityId}
+                options={(cities ?? []).map((c) => ({ id: c.id, label: c.name }))}
+                onChange={(id) => void onCityChange(id)}
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
+              Barrio (opcional)
+              <SearchableSelect
+                key={`hood-${cityId}-${neighborhoods ? "ok" : "loading"}`}
+                name="mlNeighborhoodId"
+                placeholder={
+                  loadingNeighborhoods
+                    ? "Cargando…"
+                    : !cityId
+                      ? "Elegí la ciudad"
+                      : neighborhoods?.length
+                        ? "Buscar barrio…"
+                        : "Sin barrios en ML"
+                }
+                disabled={!neighborhoods?.length}
+                defaultValue={neighborhoodId}
+                options={(neighborhoods ?? []).map((n) => ({ id: n.id, label: n.name }))}
+                onChange={setNeighborhoodId}
+              />
+            </label>
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" size="sm" onClick={save} disabled={pending || !stateId || !cityId}>
+              Guardar
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setEditing(false)}>
+              Cancelar
+            </Button>
+          </div>
         </div>
       )}
     </div>

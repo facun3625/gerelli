@@ -8,6 +8,8 @@ import {
   pauseListingOnMercadoLibre,
   reactivateListingOnMercadoLibre,
   closeListingOnMercadoLibre,
+  getListingRequirements,
+  saveListingOptions,
 } from "@/lib/mercadolibre/publish";
 
 async function withTenant<T>(listingId: string, run: (tenantId: string) => Promise<T>) {
@@ -52,5 +54,29 @@ export async function closeMercadoLibreListing(propertyId: string, listingId: st
     return { ok: true as const };
   } catch (err) {
     return toUserError(err, "No se pudo cerrar la publicación");
+  }
+}
+
+export async function getMercadoLibreRequirements(listingId: string) {
+  try {
+    const { tenant } = await requireTenantAdmin();
+    return { ok: true as const, requirements: await getListingRequirements(tenant.id, listingId) };
+  } catch (err) {
+    return toUserError(err, "No se pudo consultar Mercado Libre");
+  }
+}
+
+export async function saveMercadoLibreOptions(
+  propertyId: string,
+  listingId: string,
+  options: { attributes: Record<string, string>; listingTypeId: string | null },
+) {
+  try {
+    const { tenant } = await requireTenantAdmin();
+    await saveListingOptions(tenant.id, listingId, options);
+    revalidatePath(`/admin/gestion/propiedades/${propertyId}`);
+    return { ok: true as const };
+  } catch (err) {
+    return toUserError(err, "No se pudo guardar");
   }
 }

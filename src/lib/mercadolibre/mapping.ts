@@ -1,109 +1,135 @@
 import "server-only";
 import type { EstateProperty, EstateListing, EstateMedia } from "@/generated/prisma/client";
-import { findAttributeValueId, type MlCategoryAttribute } from "@/lib/mercadolibre/categories";
+import type { MlCategoryAttribute } from "@/lib/mercadolibre/categories";
 
 export type PropertyForMl = EstateProperty & { media: EstateMedia[] };
 
-// Atributos que sabemos completar automáticamente a partir de nuestros
-// datos — IDs estables y documentados hace años para Inmuebles en ML.
-// Cualquier OTRO atributo que la categoría marque como obligatorio
-// (tags.required=true) y no esté en esta lista queda sin completar, y el
-// publicador lo reporta como pendiente en vez de adivinar un valor.
-type KnownAttributeId = "OPERATION" | "TOTAL_AREA" | "COVERED_AREA" | "BEDROOMS" | "FULL_BATHROOMS" | "GARAGE";
-
-const OPERATION_LABELS: Record<string, string> = { SALE: "Venta", RENT: "Alquiler" };
-
 export type MlAttributeValue = { id: string; value_id?: string; value_name?: string };
+
+export type MissingAttribute = {
+  id: string;
+  name: string;
+  valueType: string;
+  options: { id: string; name: string }[];
+};
 
 export type MappingResult = {
   attributes: MlAttributeValue[];
-  // Atributos obligatorios de la categoría que no pudimos completar — hay
-  // que resolverlos a mano en Mercado Libre después de crear el borrador,
-  // o ampliar el mapeo en este archivo.
-  unmappedRequired: { id: string; name: string }[];
+  // Obligatorios de la categoría que no salen de la propiedad ni se
+  // completaron a mano en la ficha (listing.mlAttributes).
+  missing: MissingAttribute[];
 };
 
-function buildKnownValue(id: KnownAttributeId, attribute: MlCategoryAttribute, property: PropertyForMl, listing: EstateListing): MlAttributeValue | null {
-  switch (id) {
-    case "OPERATION": {
-      const label = OPERATION_LABELS[listing.operation];
-      return label ? { id: attribute.id, value_name: label } : null;
-    }
+const area = (value: { toString(): string } | null, unit: string) =>
+  value != null && Number(value.toString()) > 0 ? `${Number(value.toString())} ${unit}` : null;
+
+// Atributos que salen solos de la ficha de la propiedad. IDs verificados
+// contra /categories/{id}/attributes de MLA (nov 2026): todas las
+// categorías finales de Inmuebles piden alguno de estos.
+function fromProperty(attribute: MlCategoryAttribute, property: PropertyForMl): string | null {
+  const unit = attribute.defaultUnit ?? "m²";
+  switch (attribute.id) {
     case "TOTAL_AREA":
-      return property.totalArea != null ? { id: attribute.id, value_name: `${property.totalArea} m²` } : null;
+      return area(property.totalArea, unit);
     case "COVERED_AREA":
-      return property.coveredArea != null ? { id: attribute.id, value_name: `${property.coveredArea} m²` } : null;
+      return area(property.coveredArea, unit);
     case "BEDROOMS":
-      return { id: attribute.id, value_name: String(property.bedrooms) };
+      return String(property.bedrooms);
     case "FULL_BATHROOMS":
-      return { id: attribute.id, value_name: String(property.bathrooms) };
-    case "GARAGE":
-      // 0 es un valor válido (no tiene cochera) — se manda siempre, igual
-      // que BEDROOMS/FULL_BATHROOMS, nunca se trata como "falta resolver".
-      return { id: attribute.id, value_name: String(property.garages) };
+      return String(property.bathrooms);
+    case "PARKING_LOTS":
+      return String(property.garages);
+    case "ROOMS":
+      // Ambientes: no lo cargamos aparte. Convención de Argentina:
+      // dormitorios + 1 (el living); un monoambiente es 1.
+      return String(Math.max(1, property.bedrooms + 1));
     default:
       return null;
   }
 }
 
-const KNOWN_IDS: KnownAttributeId[] = ["OPERATION", "TOTAL_AREA", "COVERED_AREA", "BEDROOMS", "FULL_BATHROOMS", "GARAGE"];
+export function storedAttributes(listing: Pick<EstateListing, "mlAttributes">): Record<string, string> {
+  const raw = listing.mlAttributes;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string" && e[1].trim() !== ""),
+  );
+}
 
-export async function buildAttributeValues(
+export function buildAttributeValues(
   categoryAttributes: MlCategoryAttribute[],
   property: PropertyForMl,
   listing: EstateListing,
-): Promise<MappingResult> {
+): MappingResult {
+  const manual = storedAttributes(listing);
   const attributes: MlAttributeValue[] = [];
-  const unmappedRequired: { id: string; name: string }[] = [];
+  const missing: MissingAttribute[] = [];
 
   for (const attribute of categoryAttributes) {
-    const known = KNOWN_IDS.includes(attribute.id as KnownAttributeId) ? (attribute.id as KnownAttributeId) : null;
-    if (known) {
-      // Para OPERATION el valor es de lista (hace falta el value_id real de
-      // la categoría, no basta con mandar value_name) — se resuelve contra
-      // los `values` que trajo /categories/{id}/attributes.
-      if (known === "OPERATION") {
-        const label = OPERATION_LABELS[listing.operation];
-        const valueId = label ? await findAttributeValueId(attribute, label) : null;
-        if (valueId) {
-          attributes.push({ id: attribute.id, value_id: valueId });
-          continue;
-        }
-      } else {
-        const value = buildKnownValue(known, attribute, property, listing);
-        if (value) {
-          attributes.push(value);
-          continue;
-        }
-      }
+    const manualValue = manual[attribute.id];
+    if (manualValue) {
+      const isListValue = attribute.values.some((v) => v.id === manualValue);
+      // "120" en una superficie → "120 m²": ML exige la unidad.
+      const withUnit =
+        attribute.valueType === "number_unit" && /^\d+([.,]\d+)?$/.test(manualValue)
+          ? `${manualValue.replace(",", ".")} ${attribute.defaultUnit ?? "m²"}`
+          : manualValue;
+      attributes.push(isListValue ? { id: attribute.id, value_id: manualValue } : { id: attribute.id, value_name: withUnit });
+      continue;
+    }
+    const auto = fromProperty(attribute, property);
+    if (auto !== null) {
+      attributes.push({ id: attribute.id, value_name: auto });
+      continue;
     }
     if (attribute.required) {
-      unmappedRequired.push({ id: attribute.id, name: attribute.name });
+      missing.push({
+        id: attribute.id,
+        name: attribute.name,
+        valueType: attribute.valueType,
+        options: attribute.values.map((v) => ({ id: v.id, name: v.name })),
+      });
     }
   }
 
-  return { attributes, unmappedRequired };
+  return { attributes, missing };
 }
 
 export type ListingValidationIssue = { code: string; message: string };
 
-// Chequeos previos a llamar a la API — los mismos que ML aplicaría, pero
-// explicados en español antes de gastar una llamada. La validación final
-// de atributos (unmappedRequired) solo se conoce después de resolver la
-// categoría real, por eso vive en buildAttributeValues, no acá.
+const OPERATIONS = new Set(["SALE", "RENT"]);
+
+// Chequeos previos a llamar a la API, explicados en español.
 export function validateListingBeforePublish(property: PropertyForMl, listing: EstateListing): ListingValidationIssue[] {
   const issues: ListingValidationIssue[] = [];
-  if (!listing.price) {
+  if (!listing.price || Number(listing.price) <= 0) {
     issues.push({ code: "NO_PRICE", message: "La oferta no tiene precio cargado — Mercado Libre lo exige." });
   }
   if (property.media.length === 0) {
-    issues.push({ code: "NO_PICTURES", message: "La propiedad no tiene fotos — desde enero 2026 ML rechaza publicaciones sin al menos una imagen." });
+    issues.push({ code: "NO_PICTURES", message: "La propiedad no tiene fotos — Mercado Libre pide al menos una." });
   }
-  if (!OPERATION_LABELS[listing.operation]) {
+  if (!OPERATIONS.has(listing.operation)) {
     issues.push({ code: "BAD_OPERATION", message: `Operación "${listing.operation}" no tiene equivalente en Mercado Libre (solo Venta/Alquiler).` });
   }
   if (!property.propertyType.trim()) {
     issues.push({ code: "NO_PROPERTY_TYPE", message: "La propiedad no tiene tipo asignado." });
   }
   return issues;
+}
+
+// La descripción puede venir con HTML del editor: ML solo acepta texto plano.
+export function toPlainText(html: string): string {
+  return html
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6])>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }

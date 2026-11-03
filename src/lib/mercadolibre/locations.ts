@@ -22,27 +22,24 @@ type MlCityDetail = {
 // cascada desde /admin/configuracion (una vez por ciudad/barrio, se
 // reutiliza para todas las propiedades de esa zona).
 export async function listClassifiedCountries(tenantId: string): Promise<MlLocationRef[]> {
-  return mlFetch<MlLocationRef[]>(tenantId, "/classified_locations/countries");
+  return mlFetch<MlLocationRef[]>(tenantId, "/classified_locations/countries", { auth: false });
 }
 
 export async function getClassifiedState(tenantId: string, stateId: string): Promise<MlStateDetail & { cities: MlLocationRef[] }> {
-  return mlFetch(tenantId, `/classified_locations/states/${stateId}`);
+  return mlFetch(tenantId, `/classified_locations/states/${stateId}`, { auth: false });
 }
 
 export async function getClassifiedCity(
   tenantId: string,
   cityId: string,
 ): Promise<MlCityDetail & { neighborhoods: MlLocationRef[] }> {
-  return mlFetch(tenantId, `/classified_locations/cities/${cityId}`);
+  return mlFetch(tenantId, `/classified_locations/cities/${cityId}`, { auth: false });
 }
 
-// La doc pública no muestra el shape exacto de este endpoint (solo
-// confirma /countries sin parámetros y /states/{id} con el detalle de UN
-// estado) — se asume el mismo patrón jerárquico que states→cities y
-// cities→neighborhoods (country anida su lista de states), igual que la
-// API general de ubicaciones de ML. Si al probarlo con cuenta real el
-// shape es otro, este es el único lugar a ajustar.
+// /classified_locations/countries/AR trae `states` anidados (verificado
+// contra la API real en nov 2026). Estos endpoints son públicos: el mapeo
+// de ubicaciones se puede hacer antes de conectar la cuenta.
 export async function getCountryStates(tenantId: string, countryId: string): Promise<MlLocationRef[]> {
-  const country = await mlFetch<{ states: MlLocationRef[] }>(tenantId, `/classified_locations/countries/${countryId}`);
+  const country = await mlFetch<{ states: MlLocationRef[] }>(tenantId, `/classified_locations/countries/${countryId}`, { auth: false });
   return country.states;
 }

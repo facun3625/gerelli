@@ -542,6 +542,10 @@ model EstateListing {
   mlStatus       String?
   mlLastSyncedAt DateTime?
   mlLastError    String?
+  // Valores de atributos que ML pide y no salen de la propiedad (ej.
+  // LAND_ACCESS de un terreno): { "LAND_ACCESS": "245046" } — value_id si
+  // el atributo es de lista, texto si no. Se completan desde la ficha.
+  mlAttributes   Json?
 
   @@unique([propertyId, operation])
   @@index([tenantId, status])
