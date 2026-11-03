@@ -30,6 +30,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { RecordForm } from "@/components/estate/record-form";
 import { MarkSeenOnMount } from "@/components/admin/mark-seen-on-mount";
+import { InquiryStatusPanel } from "@/components/estate/inquiry-status-panel";
 import { markEstateInquirySeen } from "@/app/admin/gestion/actions";
 import { BillingSuggestionsPanel, type BillingSuggestion } from "@/components/estate/billing-suggestions-panel";
 import { PaymentForm, CancelCharge } from "@/components/estate/payment-form";
@@ -72,6 +73,16 @@ function FilterSelect({
     </div>
   );
 }
+
+const inquiryDate = new Intl.DateTimeFormat("es-AR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: "America/Argentina/Buenos_Aires",
+});
 
 export default async function EstateModulePage({
   params,
@@ -149,6 +160,19 @@ export default async function EstateModulePage({
       ? (await estateRows(module, tenant.id, "", 0, search.edit))[0]
       : undefined;
   if (search.edit && !edit) notFound();
+  const inquiryHistory =
+    module === "consultas" && edit
+      ? await prisma.estateInquiry.findFirst({
+          where: { id: edit.id, tenantId: tenant.id },
+          select: {
+            createdAt: true,
+            statusChanges: {
+              orderBy: { createdAt: "asc" },
+              select: { id: true, status: true, changedByName: true, createdAt: true },
+            },
+          },
+        })
+      : null;
   const isContratos = module === "contratos";
   const billingSuggestions = isContratos
     ? await prisma.estateBillingSuggestion.findMany({
@@ -265,9 +289,21 @@ export default async function EstateModulePage({
             </Link>
           </div>
           {module === "agentes" && edit && <AgentAccessForm agentId={edit.id} />}
+          {module === "consultas" && edit && inquiryHistory && (
+            <InquiryStatusPanel
+              id={edit.id}
+              status={String(edit.values.status)}
+              createdAt={inquiryDate.format(inquiryHistory.createdAt)}
+              history={inquiryHistory.statusChanges.map(({ createdAt, ...c }) => ({ ...c, when: inquiryDate.format(createdAt) }))}
+              closeHref={`${base}?${query}`}
+            />
+          )}
           {module === "consultas" && edit && <InquiryMatches tenantId={tenant.id} inquiryId={edit.id} />}
           <RecordForm
-            key={edit?.id ?? "new"}
+            // En Consultas el estado también se cambia con los botones de
+            // arriba: la key incluye el estado para que el select del
+            // formulario no quede mostrando el anterior.
+            key={edit ? `${edit.id}-${module === "consultas" ? edit.values.status : ""}` : "new"}
             module={module}
             id={edit?.id}
             values={edit?.values}
@@ -531,6 +567,9 @@ export default async function EstateModulePage({
                     }`}
                   >
                     {row.status}
+                    {row.statusBy && (
+                      <span className="opacity-75"> · {row.statusBy}</span>
+                    )}
                   </span>
                   {module === "propiedades" && (
                     <FeatureToggleButton id={row.id} featured={row.values.featured === true} />

@@ -219,7 +219,7 @@ export const modules: Record<string, Module> = {
       {
         name: "status",
         label: "Estado",
-        options: ["NEW", "CONTACTED", "QUALIFIED", "CLOSED"],
+        options: ["NEW", "READ", "CONTACTED", "QUALIFIED", "CLOSED"],
       },
       { name: "notes", label: "Seguimiento privado", type: "textarea" },
     ],
@@ -419,8 +419,9 @@ export const labels: Record<string, string> = {
   TENANT: "Inquilino",
   BUYER: "Comprador",
   GUARANTOR: "Garante",
-  NEW: "Nueva",
-  CONTACTED: "Contactado",
+  NEW: "Ingresada",
+  READ: "Leída",
+  CONTACTED: "Contactada",
   QUALIFIED: "Calificada",
   CLOSED: "Cerrada",
   SCHEDULED: "Programada",
@@ -517,11 +518,13 @@ export function argentinaDayStart(now = new Date()) {
 // (nunca saturado, para no ensuciar la lista) por cada estado, así se
 // distinguen entre sí de un vistazo. "Nueva" queda la más marcada de las
 // cuatro a propósito, porque es la única que hace falta detectar rápido
-// (abrir la consulta la pasa sola a "Contactado").
+// (abrir la consulta la pasa sola a "Leída").
 export function consultaStatusBadgeClass(status: string): string {
   switch (status) {
     case "NEW":
       return "bg-blue-500/15 text-blue-700 dark:text-blue-300 font-semibold";
+    case "READ":
+      return "bg-sky-500/10 text-sky-700 dark:text-sky-300";
     case "CONTACTED":
       return "bg-amber-500/10 text-amber-700 dark:text-amber-400";
     case "QUALIFIED":

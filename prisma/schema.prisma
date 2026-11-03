@@ -659,9 +659,25 @@ model EstateInquiry {
   tenant          Tenant          @relation(fields: [tenantId], references: [id])
   contact         EstateContact   @relation(fields: [contactId, tenantId], references: [id, tenantId])
   property        EstateProperty? @relation(fields: [propertyId, tenantId], references: [id, tenantId])
+  statusChanges   EstateInquiryStatusChange[]
 
   @@index([tenantId, assignedAgentId])
   @@index([tenantId, status, createdAt])
+}
+
+// Historial de estados de una consulta: quién la marcó como leída,
+// contactada, etc. El nombre se guarda copiado (no solo el userId) para que
+// el historial siga diciendo quién fue aunque después se borre el usuario.
+model EstateInquiryStatusChange {
+  id            String        @id @default(cuid())
+  inquiryId     String
+  status        String
+  changedById   String?
+  changedByName String
+  createdAt     DateTime      @default(now())
+  inquiry       EstateInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId, createdAt])
 }
 
 model EstateVisit {

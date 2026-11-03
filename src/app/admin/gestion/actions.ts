@@ -14,6 +14,7 @@ import { periodDueDate } from "@/lib/estate/billing-automation";
 import { runEstateBillingCycle } from "@/lib/estate/billing-cron";
 import { agentPermissionsFromForm } from "@/lib/agent-permissions";
 import { modules } from "@/lib/estate/modules";
+import { INQUIRY_STATUSES, logInquiryStatusChange } from "@/lib/estate/inquiry-status";
 import {
   agentSchema,
   amount,
@@ -76,17 +77,59 @@ function refreshEstate() {
   revalidatePath("/", "layout");
 }
 
-// Abrir la ficha cuenta como "vista" — se llama desde MarkSeenOnMount, que
-// solo se dispara cuando el componente realmente monta en el navegador
-// (nunca durante el prefetch de un <Link>, que ejecutaría esto con solo
-// pasar el mouse cerca si viviera en el render de la página).
+// Abrir la ficha la pasa de "Ingresada" a "Leída" y registra quién la
+// abrió — se llama desde MarkSeenOnMount, que solo se dispara cuando el
+// componente realmente monta en el navegador (nunca durante el prefetch de
+// un <Link>, que ejecutaría esto con solo pasar el mouse cerca si viviera en
+// el render de la página).
 export async function markEstateInquirySeen(id: string) {
-  const { tenant } = await requireTenantAdmin();
-  const { count } = await prisma.estateInquiry.updateMany({
-    where: { id, tenantId: tenant.id, status: "NEW" },
-    data: { status: "CONTACTED" },
+  const { tenant, session } = await requireTenantAdmin();
+  const changed = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.estateInquiry.updateMany({
+      where: { id, tenantId: tenant.id, status: "NEW" },
+      data: { status: "READ" },
+    });
+    if (count > 0) await logInquiryStatusChange(tx, id, "NEW", "READ", session.user);
+    return count > 0;
   });
-  if (count > 0) refreshEstate();
+  if (changed) refreshEstate();
+}
+
+// Cambio rápido de estado desde la ficha, sin tener que guardar todo el
+// formulario.
+export async function setEstateInquiryStatus(id: string, status: string) {
+  try {
+    const { tenant, session } = await requireTenantAdmin();
+    const next = z.enum(INQUIRY_STATUSES).parse(status);
+    await prisma.$transaction(async (tx) => {
+      const inquiry = await tx.estateInquiry.findFirst({
+        where: { id, tenantId: tenant.id },
+        select: { status: true },
+      });
+      if (!inquiry) throw new ActionError("Consulta no encontrada");
+      if (inquiry.status === next) return;
+      await tx.estateInquiry.update({ where: { id }, data: { status: next } });
+      await logInquiryStatusChange(tx, id, inquiry.status, next, session.user);
+    });
+    refreshEstate();
+    return { ok: true as const };
+  } catch (error) {
+    return toUserError(error, "No se pudo cambiar el estado");
+  }
+}
+
+export async function deleteEstateInquiry(id: string) {
+  try {
+    const { tenant } = await requireTenantAdmin();
+    const { count } = await prisma.estateInquiry.deleteMany({
+      where: { id, tenantId: tenant.id },
+    });
+    if (count === 0) throw new ActionError("Consulta no encontrada");
+    refreshEstate();
+    return { ok: true as const };
+  } catch (error) {
+    return toUserError(error, "No se pudo eliminar la consulta");
+  }
 }
 function actionError(error: unknown) {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -415,16 +458,20 @@ export async function saveEstateRecord(
                 contactId: requiredText,
                 propertyId: optionalId,
                 message: notes.refine(Boolean, "Ingresá la consulta"),
-                status: z.enum(["NEW", "CONTACTED", "QUALIFIED", "CLOSED"]),
+                status: z.enum(INQUIRY_STATUSES),
                 notes,
               })
               .parse(raw);
             await verifyRelations(tx, tenantId, data);
             if (data.assignedAgentId && !(await tx.estateAgent.findFirst({ where: { id: data.assignedAgentId, tenantId } })))
               throw new ActionError("Agente no encontrado en esta inmobiliaria");
+            const previous = id
+              ? await tx.estateInquiry.findFirst({ where, select: { status: true } })
+              : null;
             record = id
               ? await tx.estateInquiry.update({ where, data })
               : await tx.estateInquiry.create({ data: { ...data, tenantId } });
+            await logInquiryStatusChange(tx, record.id, previous?.status ?? null, data.status, session.user);
             break;
           }
           case "visitas": {

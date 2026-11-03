@@ -8,6 +8,8 @@ export type EstateRow = {
   subtitle: string;
   status: string;
   detail: string;
+  // Quién dejó la consulta en su estado actual (solo Consultas).
+  statusBy?: string;
   values: Record<string, string | boolean | string[]>;
   media?: { id: string; url: string }[];
 };
@@ -233,7 +235,12 @@ export async function estateRows(
               ? { OR: [{ message: contains }, { contact: { name: contains } }] }
               : {}),
           },
-          include: { contact: true, property: true, assignedAgent: true },
+          include: {
+            contact: true,
+            property: true,
+            assignedAgent: true,
+            statusChanges: { orderBy: { createdAt: "desc" }, take: 1, select: { changedByName: true } },
+          },
           orderBy: { createdAt: "desc" },
           ...paging,
         })
@@ -242,6 +249,7 @@ export async function estateRows(
         title: r.contact.name,
         subtitle: r.searchCriteria ? "Búsqueda guardada · Ver coincidencias" : r.property?.title ?? "Consulta general",
         status: labels[r.status],
+        statusBy: r.status === "NEW" ? undefined : r.statusChanges[0]?.changedByName,
         detail: `${r.assignedAgent ? `Responsable: ${r.assignedAgent.name}` : "Sin asignar"} · ${r.message}`,
         values: values(r),
       }));
