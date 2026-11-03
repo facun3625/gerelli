@@ -1,19 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { MAP_PIN_ICON } from "./map-pin";
 import { SearchIcon } from "lucide-react";
 import { inputClass } from "@/components/estate/form-field-class";
 
 const DEFAULT_CENTER: [number, number] = [-31.4201, -64.1888]; // Córdoba
 
-const PIN_ICON = L.divIcon({
-  html: `<div style="width:28px;height:28px;background:#1e658c;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`,
-  iconSize: [28, 28],
-  iconAnchor: [14, 28],
-  className: "",
-});
 
 type Suggestion = {
   display_name: string;
@@ -225,7 +219,7 @@ export function PropertyLocationPicker({
           {point && (
             <Marker
               position={point}
-              icon={PIN_ICON}
+              icon={MAP_PIN_ICON}
               draggable
               eventHandlers={{
                 dragend: (e) => {

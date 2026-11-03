@@ -1,8 +1,8 @@
 "use client";
 import { useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { MAP_PIN_ICON } from "./map-pin";
 
 import { money, labels } from "@/lib/estate/modules";
 
@@ -27,16 +27,6 @@ const OPERATION_COLOR: Record<string, string> = {
   SALE: "#1e658c",
   RENT: "#208ab1",
 };
-
-function makeIcon(color: string) {
-  return L.divIcon({
-    html: `<div style="width:28px;height:28px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 28],
-    popupAnchor: [0, -30],
-    className: "",
-  });
-}
 
 function FitToMarkers({ points }: { points: [number, number][] }) {
   const map = useMap();
@@ -80,7 +70,7 @@ export function EstateMap({ properties }: { properties: MapProperty[] }) {
           <Marker
             key={p.id}
             position={[p.latitude, p.longitude]}
-            icon={makeIcon(color)}
+            icon={MAP_PIN_ICON}
           >
             <Popup minWidth={200} maxWidth={220}>
               <a
