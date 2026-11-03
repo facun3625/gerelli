@@ -158,7 +158,17 @@ export function MailComposer({
     });
   }
 
-  function send() {
+  async function send() {
+    // La confirmación va antes de la transición: adentro, el diálogo no se
+    // llega a mostrar hasta que la transición termina (y nunca termina).
+    if (mode === "list") {
+      const ok = await confirm({
+        title: "Enviar a toda la lista",
+        description: `Se va a enviar «${fields.subject}» a ${audienceCount} ${audienceCount === 1 ? "persona" : "personas"}. ¿Confirmás?`,
+        confirmLabel: "Enviar",
+      });
+      if (!ok) return;
+    }
     startTransition(async () => {
       if (mode === "single") {
         if (!recipient.email.trim()) {
@@ -177,12 +187,6 @@ export function MailComposer({
         router.refresh();
         return;
       }
-      const ok = await confirm({
-        title: "Enviar a toda la lista",
-        description: `Se va a enviar «${fields.subject}» a ${audienceCount} ${audienceCount === 1 ? "persona" : "personas"}. ¿Confirmás?`,
-        confirmLabel: "Enviar",
-      });
-      if (!ok) return;
       const result = await sendCampaign(draft, includeContacts);
       if ("error" in result) {
         toast.error(result.error);

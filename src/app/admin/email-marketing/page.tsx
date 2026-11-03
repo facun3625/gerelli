@@ -22,6 +22,7 @@ const dateFormatter = new Intl.DateTimeFormat("es-AR", {
 export default async function EmailMarketingPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tenant } = await requireTenantAdmin();
   const { tab } = await searchParams;
+  const mailerReady = await isMailerConfigured(tenant.id);
   const [campaigns, subscribers, audience, settings] = await Promise.all([
     prisma.emailCampaign.findMany({
       where: { tenantId: tenant.id },
@@ -63,9 +64,9 @@ export default async function EmailMarketingPage({ searchParams }: { searchParam
         </div>
       </div>
 
-      {!isMailerConfigured() && (
+      {!mailerReady && (
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
-          El envío de mails todavía no está configurado en el servidor (faltan RESEND_API_KEY y RESEND_FROM_EMAIL).
+          Todavía no hay correo configurado. Cargá los datos del SMTP en <Link href="/admin/configuracion?tab=correo" className="font-semibold underline">Configuración → Correo</Link>.
         </p>
       )}
 

@@ -6,8 +6,10 @@ import { sendMailBatch } from "@/lib/mailer";
 import { getMailBrand, unsubscribeUrl, SITE_URL } from "@/lib/email-marketing/data";
 import { applyNameToken, renderMarketingEmail, type MailContent } from "@/lib/email-marketing/templates";
 
-const BATCH_SIZE = 50;
-const PAUSE_MS = 1100;
+// Lotes chicos con pausa: los SMTP de hosting suelen limitar cuántos
+// mails por minuto aceptan.
+const BATCH_SIZE = 20;
+const PAUSE_MS = 2000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -36,9 +38,9 @@ export async function runCampaign(campaignId: string) {
     });
     if (batch.length === 0) break;
 
-    const ids = batch.map((r) => r.id);
+    let results: (string | null)[];
     try {
-      await sendMailBatch(
+      results = await sendMailBatch(
         campaign.tenantId,
         batch.map((r) => ({
           to: r.email,
@@ -51,17 +53,24 @@ export async function runCampaign(campaignId: string) {
         })),
         settings.email,
       );
-      await prisma.$transaction([
-        prisma.emailCampaignRecipient.updateMany({ where: { id: { in: ids } }, data: { success: true, sentAt: new Date() } }),
-        prisma.emailCampaign.update({ where: { id: campaignId }, data: { sentCount: { increment: ids.length } } }),
-      ]);
     } catch (error) {
+      // No hay correo configurado o el servidor SMTP no responde: falla
+      // todo el lote.
       const message = error instanceof Error ? error.message : String(error);
-      await prisma.$transaction([
-        prisma.emailCampaignRecipient.updateMany({ where: { id: { in: ids } }, data: { success: false, error: message.slice(0, 300) } }),
-        prisma.emailCampaign.update({ where: { id: campaignId }, data: { failedCount: { increment: ids.length } } }),
-      ]);
+      results = batch.map(() => message);
     }
+    const okIds = batch.filter((_, i) => results[i] === null).map((r) => r.id);
+    const failed = batch.map((r, i) => ({ id: r.id, error: results[i] })).filter((f) => f.error !== null);
+    await prisma.$transaction([
+      prisma.emailCampaignRecipient.updateMany({ where: { id: { in: okIds } }, data: { success: true, sentAt: new Date() } }),
+      ...failed.map((f) =>
+        prisma.emailCampaignRecipient.update({ where: { id: f.id }, data: { success: false, error: (f.error ?? "").slice(0, 300) } }),
+      ),
+      prisma.emailCampaign.update({
+        where: { id: campaignId },
+        data: { sentCount: { increment: okIds.length }, failedCount: { increment: failed.length } },
+      }),
+    ]);
     await sleep(PAUSE_MS);
   }
 

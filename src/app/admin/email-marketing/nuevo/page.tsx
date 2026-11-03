@@ -16,6 +16,7 @@ export default async function NuevoMailPage({
 }) {
   const { tenant, session } = await requireTenantAdmin();
   const params = await searchParams;
+  const mailerReady = await isMailerConfigured(tenant.id);
   const [brand, catalog, contacts, subscribers, withContacts, settings] = await Promise.all([
     getMailBrand(tenant.id),
     getMailCatalog(tenant.id),
@@ -42,9 +43,9 @@ export default async function NuevoMailPage({
         </Link>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight">Nuevo mail</h1>
       </div>
-      {!isMailerConfigured() && (
+      {!mailerReady && (
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
-          El envío de mails todavía no está configurado en el servidor (faltan RESEND_API_KEY y RESEND_FROM_EMAIL). Podés
+          Todavía no hay correo configurado. Cargá los datos del SMTP en <Link href="/admin/configuracion?tab=correo" className="font-semibold underline">Configuración → Correo</Link>. Podés
           armar el mail y ver la vista previa, pero no se va a poder enviar.
         </p>
       )}

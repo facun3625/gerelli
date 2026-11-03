@@ -54,7 +54,7 @@ const emailSchema = z.email("Ingresá un mail válido").max(254);
 export async function sendTestEmail(draft: MailDraft, to: string) {
   try {
     const { tenant } = await requireTenantAdmin();
-    if (!isMailerConfigured()) throw new ActionError("El envío de mails no está configurado en el servidor (Resend).");
+    if (!(await isMailerConfigured(tenant.id))) throw new ActionError("Todavía no hay correo configurado: cargá el SMTP en Configuración → Correo.");
     const email = emailSchema.parse(to.trim());
     const content = await buildContent(tenant.id, draft);
     const brand = await getMailBrand(tenant.id);
@@ -76,7 +76,7 @@ export async function sendTestEmail(draft: MailDraft, to: string) {
 export async function sendToClient(draft: MailDraft, recipient: { email: string; name: string }) {
   try {
     const { tenant, session } = await requireTenantAdmin();
-    if (!isMailerConfigured()) throw new ActionError("El envío de mails no está configurado en el servidor (Resend).");
+    if (!(await isMailerConfigured(tenant.id))) throw new ActionError("Todavía no hay correo configurado: cargá el SMTP en Configuración → Correo.");
     const email = normalizeEmail(emailSchema.parse(recipient.email.trim()));
     const name = recipient.name.trim().slice(0, 120);
     const content = await buildContent(tenant.id, draft);
@@ -133,7 +133,7 @@ export async function sendToClient(draft: MailDraft, recipient: { email: string;
 export async function sendCampaign(draft: MailDraft, includeContacts: boolean) {
   try {
     const { tenant, session } = await requireTenantAdmin();
-    if (!isMailerConfigured()) throw new ActionError("El envío de mails no está configurado en el servidor (Resend).");
+    if (!(await isMailerConfigured(tenant.id))) throw new ActionError("Todavía no hay correo configurado: cargá el SMTP en Configuración → Correo.");
     const content = await buildContent(tenant.id, draft);
     const audience = await getAudience(tenant.id, includeContacts);
     if (audience.length === 0) throw new ActionError("No hay nadie en la lista para mandarle este mail.");

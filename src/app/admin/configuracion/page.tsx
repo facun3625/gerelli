@@ -11,9 +11,11 @@ import { TelegramSettingsForm } from "./telegram-settings-form";
 import { AiAssistantSettingsForm } from "./ai-assistant-settings-form";
 import { MercadoLibreSettingsForm } from "./mercadolibre-settings-form";
 import { BackupsPanel } from "./backups-panel";
+import { SmtpSettingsForm } from "./smtp-settings-form";
+import { getSmtpSettings } from "@/lib/smtp-settings";
 import { listBackups, MAX_BACKUPS } from "@/lib/backup";
 
-const VALID_TABS = new Set(["popup", "seo", "telegram", "ia", "mercadolibre", "backups"]);
+const VALID_TABS = new Set(["popup", "seo", "telegram", "ia", "mercadolibre", "correo", "backups"]);
 
 const backupDate = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "full",
@@ -31,7 +33,7 @@ export default async function ConfiguracionPage({
   const isAdmin = session.user.role === "ADMIN";
   const { tab, mlError } = await searchParams;
   const initialTab = tab && VALID_TABS.has(tab) ? tab : "popup";
-  const [settings, popupConfig, seoSettings, telegramSettings, aiSettings, mlSettings, properties, mlLocations, backups] = await Promise.all([
+  const [settings, popupConfig, seoSettings, telegramSettings, aiSettings, mlSettings, properties, mlLocations, backups, smtpSettings] = await Promise.all([
     getStoreSettings(tenant.id),
     getPopupConfig(tenant.id),
     getSeoSettings(tenant.id),
@@ -46,6 +48,7 @@ export default async function ConfiguracionPage({
     }),
     prisma.estateMlLocation.findMany({ where: { tenantId: tenant.id } }),
     isAdmin ? listBackups() : Promise.resolve([]),
+    getSmtpSettings(tenant.id),
   ]);
 
   const mlLocationRows = properties.map((p) => ({
@@ -74,6 +77,9 @@ export default async function ConfiguracionPage({
           </TabsTrigger>
           <TabsTrigger value="mercadolibre" className="flex-1">
             Mercado Libre
+          </TabsTrigger>
+          <TabsTrigger value="correo" className="flex-1">
+            Correo
           </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="backups" className="flex-1">
@@ -112,6 +118,10 @@ export default async function ConfiguracionPage({
             mlError={mlError ?? null}
             locationRows={mlLocationRows}
           />
+        </TabsContent>
+
+        <TabsContent value="correo">
+          <SmtpSettingsForm key={JSON.stringify(smtpSettings)} settings={smtpSettings} myEmail={session.user.email ?? ""} />
         </TabsContent>
 
         {isAdmin && (
