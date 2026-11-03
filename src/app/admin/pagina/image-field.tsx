@@ -81,7 +81,10 @@ export function ImageField({
         ref={inputRef}
         type="file"
         name={name}
-        accept="image/*"
+        // macOS (Safari y Chrome) no considera el SVG dentro de "image/*" y
+        // lo deja gris en el selector. El servidor ya lo acepta y lo
+        // sanitiza (saveUploadedFile), así que se lo nombra explícitamente.
+        accept="image/*,.svg,image/svg+xml"
         className="hidden"
         onChange={handleFileChange}
       />
