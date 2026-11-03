@@ -21,8 +21,9 @@ export function AlertForm({ options }: { options: SearchOptions }) {
     <fieldset disabled={pending} className="space-y-7 disabled:opacity-60">
       <div><h2 className="text-lg font-semibold">¿Qué propiedad buscás?</h2><p className="mt-1 text-sm text-muted-foreground">Elegí tus requisitos para encontrar coincidencias precisas.</p></div>
       <SearchCriteriaFields options={options} />
-      <div className="border-t pt-6"><h2 className="font-semibold">¿Cómo te contactamos?</h2><div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="border-t pt-6"><h2 className="font-semibold">¿Cómo te contactamos?</h2><div className="mt-4 grid gap-4 sm:grid-cols-3">
         <label className="block space-y-1.5 text-sm font-medium"><span>Nombre</span><input name="name" autoComplete="name" required minLength={2} maxLength={150} className={inputClass} /></label>
+        <label className="block space-y-1.5 text-sm font-medium"><span>Teléfono / WhatsApp</span><input name="phone" type="tel" inputMode="tel" autoComplete="tel" required minLength={6} maxLength={40} placeholder="Ej: 342 4123456" className={inputClass} /></label>
         <label className="block space-y-1.5 text-sm font-medium"><span>Email</span><input name="email" type="email" autoComplete="email" required maxLength={254} className={inputClass} /></label>
       </div></div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

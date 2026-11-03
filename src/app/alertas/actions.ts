@@ -17,7 +17,12 @@ export async function subscribeToAlerts(form: FormData) {
     const data = z
       .object({
         name: z.string().trim().min(2).max(150),
-        email: z.email().max(254),
+        email: z.email("Ingresá un email válido").max(254),
+        phone: z
+          .string()
+          .trim()
+          .max(40)
+          .refine((v) => v.replace(/\D/g, "").length >= 6, "Ingresá un teléfono válido"),
         website: z.literal(""),
       })
       .parse(Object.fromEntries(form));
@@ -33,7 +38,7 @@ export async function subscribeToAlerts(form: FormData) {
       throw new ActionError("Elegí un tipo de propiedad del listado");
     await prisma.$transaction(async (tx) => {
       const contact = await tx.estateContact.create({
-        data: { tenantId: tenant.id, name: data.name, email: data.email, roles: ["PROSPECT"] },
+        data: { tenantId: tenant.id, name: data.name, email: data.email, phone: data.phone, roles: ["PROSPECT"] },
       });
       await tx.estateInquiry.create({
         data: {
