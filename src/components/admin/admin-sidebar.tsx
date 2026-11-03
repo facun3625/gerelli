@@ -6,7 +6,6 @@ import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   LayoutDashboardIcon,
-  CalendarDaysIcon,
   ClipboardListIcon,
   CreditCardIcon,
   SettingsIcon,
@@ -74,12 +73,6 @@ const sections: Section[] = [
     href: "/admin/gestion/busquedas",
     label: "Búsquedas guardadas",
     icon: SearchIcon,
-    group: "Gestión Inmobiliaria",
-  },
-  {
-    href: "/admin/gestion/visitas",
-    label: "Agenda de visitas",
-    icon: CalendarDaysIcon,
     group: "Gestión Inmobiliaria",
   },
   {

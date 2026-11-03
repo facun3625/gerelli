@@ -20,7 +20,6 @@ export default async function AdminPage() {
     contacts,
     inquiries,
     contracts,
-    visits,
     expiring,
     charges,
   ] = await Promise.all([
@@ -33,16 +32,6 @@ export default async function AdminPage() {
     }),
     prisma.estateContract.count({
       where: { tenantId: tenant.id, status: "ACTIVE" },
-    }),
-    prisma.estateVisit.findMany({
-      where: {
-        tenantId: tenant.id,
-        startsAt: { gte: now },
-        status: { in: ["SCHEDULED", "CONFIRMED"] },
-      },
-      include: { property: true, contact: true },
-      orderBy: { startsAt: "asc" },
-      take: 5,
     }),
     prisma.estateContract.findMany({
       where: {
@@ -137,37 +126,7 @@ export default async function AdminPage() {
           </Link>
         ))}
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border bg-card p-6">
-          <h2 className="text-lg font-semibold">Próximas visitas</h2>
-          <div className="mt-5 space-y-4">
-            {visits.map((v) => (
-              <Link
-                key={v.id}
-                href="/admin/gestion/visitas"
-                className="block rounded-xl bg-muted/40 p-4"
-              >
-                <p className="font-medium">{v.property.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {v.contact.name} ·{" "}
-                  {new Intl.DateTimeFormat("es-AR", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                    timeZone: "America/Argentina/Cordoba",
-                  }).format(v.startsAt)}
-                </p>
-              </Link>
-            ))}
-            {!visits.length && (
-              <p className="py-8 text-sm text-muted-foreground">
-                No hay visitas programadas. Organizá la próxima desde la agenda.
-              </p>
-            )}
-          </div>
-          <Link href="/admin/gestion/visitas" className="text-sm text-primary">
-            Abrir agenda →
-          </Link>
-        </section>
+      <div className="grid gap-6">
         <section className="rounded-2xl border bg-card p-6">
           <h2 className="text-lg font-semibold">Vencimientos y cobranzas</h2>
           <div className="my-5 space-y-3">
