@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Building2, FileTextIcon, IdCardIcon, ShieldCheckIcon, WalletIcon } from "lucide-react";
+import { ArrowLeft, Building2, FileTextIcon, IdCardIcon, MailIcon, ShieldCheckIcon, WalletIcon } from "lucide-react";
 import { requireTenantAdmin } from "@/lib/require-admin";
 import { estateRows, estateOptions } from "@/lib/estate/data";
 import { prisma } from "@/lib/prisma";
@@ -116,6 +116,15 @@ export default async function EditarContactoPage({
           </Link>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <h1 className="text-3xl font-semibold tracking-tight">{record.title}</h1>
+            {typeof record.values.email === "string" && record.values.email && (
+              <Link
+                href={`/admin/email-marketing/nuevo?contacto=${record.id}`}
+                className="inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-medium"
+              >
+                <MailIcon className="size-4" />
+                Enviarle propiedades por mail
+              </Link>
+            )}
             {hasActiveContract && (
               <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
                 Contrato activo

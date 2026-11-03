@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, BadgeDollarSignIcon, ImageIcon, MapPinIcon, Tags, TextIcon } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BadgeDollarSignIcon, ImageIcon, MailIcon, MapPinIcon, Tags, TextIcon } from "lucide-react";
 import { requireTenantAdmin } from "@/lib/require-admin";
 import { prisma } from "@/lib/prisma";
 import { estateRows, estateOptions } from "@/lib/estate/data";
@@ -50,7 +50,7 @@ export default async function EditarPropiedadPage({
             {record.title}
           </h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href="/admin/gestion/categorias"
             className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium"
@@ -58,6 +58,15 @@ export default async function EditarPropiedadPage({
             <Tags className="size-4" />
             Categorías
           </Link>
+          {record.values.published === true && (
+            <Link
+              href={`/admin/email-marketing/nuevo?propiedad=${record.id}`}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground"
+            >
+              <MailIcon className="size-4" />
+              Enviar por mail
+            </Link>
+          )}
           {record.values.published === true && (
             <Link
               href={`/propiedades/${record.id}`}

@@ -2,7 +2,8 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import Link from "next/link";
+import { MailIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useConfirm } from "@/components/admin/confirm-provider";
@@ -30,12 +31,15 @@ export function InquiryStatusPanel({
   createdAt,
   history,
   closeHref,
+  mailHref = null,
 }: {
   id: string;
   status: string;
   createdAt: string;
   history: InquiryStatusEvent[];
   closeHref: string;
+  // Atajo al armado de mail con el cliente (y la propiedad) ya cargados.
+  mailHref?: string | null;
 }) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -96,10 +100,18 @@ export function InquiryStatusPanel({
             </button>
           ))}
         </div>
-        <Button type="button" size="sm" variant="destructive" disabled={pending} onClick={remove}>
-          <Trash2 className="size-3.5" />
-          Eliminar
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {mailHref && (
+            <Button size="sm" variant="outline" render={<Link href={mailHref} />}>
+              <MailIcon className="size-3.5" />
+              Responder por mail
+            </Button>
+          )}
+          <Button type="button" size="sm" variant="destructive" disabled={pending} onClick={remove}>
+            <Trash2 className="size-3.5" />
+            Eliminar
+          </Button>
+        </div>
       </div>
 
       <ol className="space-y-1.5 text-xs text-muted-foreground">

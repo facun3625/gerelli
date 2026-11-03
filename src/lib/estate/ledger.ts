@@ -54,9 +54,11 @@ export async function receiveEstatePayment(
     data: {
       tenantId: tenantId,
       actorId: actorId,
-      entity: "receipt",
+      actorName: (await tx.user.findUnique({ where: { id: actorId }, select: { name: true, email: true } }))?.name ?? "",
+      entity: "cobranzas",
       entityId: receipt.id,
       action: "CONFIRM_MANUAL_PAYMENT",
+      summary: `Registró un cobro de ${receipt.amount.toString()}`,
     },
   });
 }

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { ActionError, toUserError } from "@/lib/action-error";
 import { prisma } from "@/lib/prisma";
 import { requireTenantAdmin } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import { createPasswordResetToken } from "@/lib/password-reset";
 import { getStoreSettings } from "@/lib/settings";
 import { sendMail } from "@/lib/mailer";
@@ -35,7 +36,8 @@ async function runSetUserRole(id: string, role: Role) {
     }
   }
 
-  await prisma.user.update({ where: { id, tenantId: tenant.id }, data: { role } });
+  const updated = await prisma.user.update({ where: { id, tenantId: tenant.id }, data: { role } });
+  await logActivity(tenant.id, { entity: "usuarios", entityId: id, action: "ROLE", summary: `Cambió el rol de ${updated.name || updated.email} a ${role}` }, { user: session.user });
   revalidatePath("/admin/usuarios");
   revalidatePath(`/admin/usuarios/${id}`);
   return { ok: true as const };
@@ -64,6 +66,7 @@ async function runDeleteUser(id: string) {
   }
 
   await prisma.user.delete({ where: { id, tenantId: tenant.id } });
+  await logActivity(tenant.id, { entity: "usuarios", entityId: id, action: "DELETE", summary: `Eliminó al usuario ${target.name || target.email}` }, { user: session.user });
   revalidatePath("/admin/usuarios");
   return { ok: true as const };
 }
@@ -103,6 +106,7 @@ async function runInviteAdmin(form: FormData) {
   await prisma.user.create({
     data: { tenantId: tenant.id, name: name || null, email, role: "ADMIN" },
   });
+  await logActivity(tenant.id, { entity: "usuarios", action: "INVITE", summary: `Invitó como administrador a ${email}` });
 
   const token = await createPasswordResetToken(tenant.id, email);
   const hdrs = await headers();

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { ActionError, toUserError } from "@/lib/action-error";
 import { prisma } from "@/lib/prisma";
 import { requireTenantAdmin } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import { saveUploadedFile } from "@/lib/storage";
 import { saveTextSetting, saveImageSetting, saveFaviconSetting } from "@/lib/settings-storage";
 import { CATALOG_FILTER_KEYS, CATALOG_FILTER_LABELS } from "@/lib/estate/catalog-filters";
@@ -81,6 +82,7 @@ async function runUpdateIdentity(formData: FormData) {
   );
 
   revalidatePath("/", "layout");
+  await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Cambió la identidad del sitio (nombre, logo, colores)" });
   return { ok: true as const };
 }
 
@@ -98,6 +100,7 @@ async function runUpdateHome(formData: FormData) {
   const { tenant } = await requireTenantAdmin();
   await saveImageSetting(tenant.id, formData.get("cover") as File | null, "store_cover_url");
   revalidatePath("/", "layout");
+  await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Cambió la foto de portada" });
   return { ok: true as const };
 }
 
@@ -137,6 +140,7 @@ async function runUpdateContact(formData: FormData) {
     saveTextSetting(tenant.id, parsed.email, "store_email"),
   ]);
   revalidatePath("/", "layout");
+  await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Cambió los datos de contacto" });
   return { ok: true as const };
 }
 
@@ -173,6 +177,7 @@ async function runUpdateSocial(formData: FormData) {
     saveTextSetting(tenant.id, parsed.youtube, "store_youtube"),
   ]);
   revalidatePath("/", "layout");
+  await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Cambió las redes sociales" });
   return { ok: true as const };
 }
 
@@ -202,6 +207,7 @@ async function runUpdateFooter(formData: FormData) {
     ),
   ]);
   revalidatePath("/", "layout");
+  await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Cambió el pie de página" });
   return { ok: true as const };
 }
 
@@ -222,6 +228,7 @@ async function runUpdateTemplate(templateId: string) {
   const { tenant } = await requireTenantAdmin();
   await saveTextSetting(tenant.id, templateId, "store_template");
   revalidatePath("/", "layout");
+  await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Cambió la plantilla del sitio" });
   return { ok: true as const };
 }
 
@@ -280,6 +287,7 @@ async function runUpdateCatalogFilters(formData: FormData) {
 
   revalidatePath("/", "layout");
   revalidatePath("/mapa");
+  await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Cambió los filtros del catálogo" });
   return { ok: true as const };
 }
 
@@ -301,6 +309,7 @@ async function runRemoveStoreImage(
   const { tenant } = await requireTenantAdmin();
   await prisma.settings.deleteMany({ where: { tenantId: tenant.id, key } });
   revalidatePath("/", "layout");
+  await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Quitó una imagen del sitio" });
   return { ok: true as const };
 }
 
@@ -324,6 +333,7 @@ async function runUpdateAboutText(formData: FormData) {
   );
   revalidatePath("/sobre-nosotros");
   revalidatePath("/admin/pagina");
+  await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Editó el texto de Sobre nosotros" });
   return { ok: true as const };
 }
 
@@ -359,6 +369,7 @@ async function runAddAboutMedia(formData: FormData) {
   });
   revalidatePath("/sobre-nosotros");
   revalidatePath("/admin/pagina");
+  await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Agregó una foto o video a Sobre nosotros" });
   return { ok: true as const };
 }
 
@@ -375,6 +386,7 @@ async function runDeleteAboutMedia(id: string) {
   await prisma.aboutMedia.delete({ where: { id, tenantId: tenant.id } });
   revalidatePath("/sobre-nosotros");
   revalidatePath("/admin/pagina");
+  await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Quitó una foto o video de Sobre nosotros" });
   return { ok: true as const };
 }
 
@@ -416,6 +428,7 @@ export async function saveArqContent(json: string) {
     });
     revalidatePath("/arquitectura", "layout");
     revalidatePath("/admin/pagina");
+    await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Editó las páginas de Arquitectura" });
     return { ok: true as const };
   } catch (err) {
     return toUserError(err, "No se pudo guardar");
@@ -428,6 +441,7 @@ export async function resetArqContent() {
     await prisma.settings.deleteMany({ where: { tenantId: tenant.id, key: ARQ_SETTINGS_KEY } });
     revalidatePath("/arquitectura", "layout");
     revalidatePath("/admin/pagina");
+    await logActivity(tenant.id, { entity: "pagina", action: "UPDATE", summary: "Restauró los textos originales de Arquitectura" });
     return { ok: true as const };
   } catch (err) {
     return toUserError(err, "No se pudo restablecer");

@@ -31,6 +31,8 @@ export type StoreSettings = {
   showNameInHeader: boolean;
   logoHeight: number;
   footerLogoHeight: number;
+  // Formulario "Recibí novedades por mail" arriba del pie del sitio.
+  newsletterSignup: boolean;
 };
 
 const DEFAULT_STORE_NAME = "Pedidos";
@@ -84,6 +86,7 @@ const SETTINGS_KEYS = [
   "store_show_name_in_header",
   "store_logo_height",
   "store_footer_logo_height",
+  "newsletter_signup",
 ] as const;
 
 export const getStoreSettings = cache(
@@ -138,6 +141,7 @@ export const getStoreSettings = cache(
           Number(map.store_footer_logo_height) || DEFAULT_FOOTER_LOGO_HEIGHT,
         ),
       ),
+      newsletterSignup: map.newsletter_signup !== "off",
     };
   },
 );

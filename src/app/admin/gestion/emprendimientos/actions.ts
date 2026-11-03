@@ -6,6 +6,7 @@ import { z } from "zod";
 import { ActionError, toUserError } from "@/lib/action-error";
 import { prisma } from "@/lib/prisma";
 import { requireTenantAdmin } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import { saveUploadedFile } from "@/lib/storage";
 
 const fieldSchema = z.object({
@@ -182,6 +183,12 @@ export async function saveDevelopment(id: string | null, formData: FormData) {
     });
     revalidatePath("/");
     revalidatePath("/arquitectura/obras", "layout");
+    await logActivity(tenant.id, {
+      entity: "emprendimientos",
+      entityId: development.id,
+      action: id ? "UPDATE" : "CREATE",
+      summary: `${id ? "Editó" : "Creó"} la obra «${parsed.name}»`,
+    });
     revalidatePath("/admin/gestion/emprendimientos");
     return { id: development.id };
   } catch (error) {
@@ -192,9 +199,10 @@ export async function saveDevelopment(id: string | null, formData: FormData) {
 export async function deleteDevelopment(id: string) {
   try {
     const { tenant } = await requireTenantAdmin();
-    await prisma.estateDevelopment.delete({
+    const deleted = await prisma.estateDevelopment.delete({
       where: { id, tenantId: tenant.id },
     });
+    await logActivity(tenant.id, { entity: "emprendimientos", entityId: id, action: "DELETE", summary: `Eliminó la obra «${deleted.name}»` });
     revalidatePath("/");
     revalidatePath("/arquitectura/obras", "layout");
     revalidatePath("/admin/gestion/emprendimientos");

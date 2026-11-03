@@ -57,6 +57,8 @@ model Tenant {
   whatsappLogs    WhatsappLog[]
   aiConversations EstateAiConversation[]
   mlLocations     EstateMlLocation[]
+  emailSubscribers EmailSubscriber[]
+  emailCampaigns   EmailCampaign[]
 }
 
 // ---------- Auth ----------
@@ -967,6 +969,11 @@ model EstateAuditEvent {
   id        String   @id @default(cuid())
   tenantId  String
   actorId   String
+  // Nombre copiado al momento del cambio (como en el historial de
+  // consultas): el registro sigue diciendo quién fue aunque se borre el
+  // usuario. summary es el texto legible ("Propiedad «Casa en…»").
+  actorName String   @default("")
+  summary   String   @default("")
   entity    String
   entityId  String
   action    String
@@ -1053,4 +1060,59 @@ model EstateAiMessage {
   conversation   EstateAiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
+}
+
+// ---------- Email marketing ----------
+
+// Lista de suscriptores. También sirve de lista de bajas: si un contacto
+// del CRM se da de baja se crea/actualiza su fila con unsubscribedAt, y los
+// envíos masivos excluyen cualquier mail con baja.
+model EmailSubscriber {
+  id             String    @id @default(cuid())
+  tenantId       String
+  email          String
+  name           String    @default("")
+  source         String    @default("WEB")
+  unsubscribedAt DateTime?
+  createdAt      DateTime  @default(now())
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, email])
+  @@index([tenantId, unsubscribedAt])
+}
+
+// Cada envío (a toda la lista o a un cliente puntual). content guarda el
+// mail tal como se armó en el editor, para poder verlo después.
+model EmailCampaign {
+  id             String                   @id @default(cuid())
+  tenantId       String
+  subject        String
+  template       String
+  content        Json
+  audience       String                   @default("LIST")
+  status         String                   @default("SENDING")
+  recipientCount Int                      @default(0)
+  sentCount      Int                      @default(0)
+  failedCount    Int                      @default(0)
+  createdById    String?
+  createdByName  String                   @default("")
+  createdAt      DateTime                 @default(now())
+  finishedAt     DateTime?
+  tenant         Tenant                   @relation(fields: [tenantId], references: [id])
+  recipients     EmailCampaignRecipient[]
+
+  @@index([tenantId, createdAt])
+}
+
+model EmailCampaignRecipient {
+  id         String        @id @default(cuid())
+  campaignId String
+  email      String
+  name       String        @default("")
+  success    Boolean?
+  error      String?
+  sentAt     DateTime?
+  campaign   EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
 }

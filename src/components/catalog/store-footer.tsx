@@ -9,8 +9,19 @@ import { contrastText } from "@/lib/contrast-color";
 import { toWhatsAppLink, toInstagramLink } from "@/lib/social-links";
 import { WhatsAppIcon, InstagramIcon } from "./social-icons";
 import { RichText } from "./rich-text";
+import { NewsletterSignup } from "./newsletter-signup";
 
 export function StoreFooter() {
+  const { newsletterSignup } = useStoreSettings();
+  return (
+    <>
+      {newsletterSignup && <NewsletterSignup />}
+      <StoreFooterBody />
+    </>
+  );
+}
+
+function StoreFooterBody() {
   const {
     template,
     storeName,

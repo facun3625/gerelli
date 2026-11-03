@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { requireTenantAdmin } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import { saveUploadedFile } from "@/lib/storage";
 import { saveTextSetting, saveImageSetting } from "@/lib/settings-storage";
 import { getTelegramSettings } from "@/lib/settings";
@@ -52,6 +53,7 @@ async function runUpdatePopupConfig(formData: FormData) {
   ]);
   revalidatePath("/");
   revalidatePath("/admin/configuracion");
+  await logActivity(tenant.id, { entity: "configuracion", action: "UPDATE", summary: "Cambió el pop-up del sitio" });
   return { ok: true as const };
 }
 
@@ -93,6 +95,7 @@ async function runUpdateTelegramSettings(formData: FormData) {
   ]);
 
   revalidatePath("/admin/configuracion");
+  await logActivity(tenant.id, { entity: "configuracion", action: "UPDATE", summary: "Cambió la configuración de Telegram" });
   return { ok: true as const };
 }
 
@@ -108,6 +111,7 @@ async function runRemoveTelegramSettings() {
   const { tenant } = await requireTenantAdmin();
   await prisma.settings.deleteMany({ where: { tenantId: tenant.id, key: { in: ["telegram_bot_token", "telegram_chat_id"] } } });
   revalidatePath("/admin/configuracion");
+  await logActivity(tenant.id, { entity: "configuracion", action: "UPDATE", summary: "Desconectó Telegram" });
   return { ok: true as const };
 }
 
@@ -162,6 +166,7 @@ async function runUpdateSeoSettings(formData: FormData) {
   await saveImageSetting(tenant.id, formData.get("ogImage") as File | null, "seo_og_image_url");
 
   revalidatePath("/", "layout");
+  await logActivity(tenant.id, { entity: "configuracion", action: "UPDATE", summary: "Cambió la configuración de SEO" });
   return { ok: true as const };
 }
 
@@ -177,6 +182,7 @@ async function runRemoveSeoImage() {
   const { tenant } = await requireTenantAdmin();
   await prisma.settings.deleteMany({ where: { tenantId: tenant.id, key: "seo_og_image_url" } });
   revalidatePath("/", "layout");
+  await logActivity(tenant.id, { entity: "configuracion", action: "UPDATE", summary: "Quitó la imagen para redes (SEO)" });
   return { ok: true as const };
 }
 
@@ -229,6 +235,7 @@ async function runUpdateAiProviderSettings(formData: FormData) {
 
   revalidatePath("/admin/configuracion");
   revalidatePath("/", "layout");
+  await logActivity(tenant.id, { entity: "configuracion", action: "UPDATE", summary: "Cambió el proveedor de IA" });
   return { ok: true as const };
 }
 
@@ -276,5 +283,6 @@ async function runUpdateAiAssistantSettings(formData: FormData) {
 
   revalidatePath("/admin/configuracion");
   revalidatePath("/", "layout");
+  await logActivity(tenant.id, { entity: "configuracion", action: "UPDATE", summary: "Cambió la configuración del asistente IA" });
   return { ok: true as const };
 }

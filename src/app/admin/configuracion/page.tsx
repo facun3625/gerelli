@@ -10,18 +10,28 @@ import { SeoSettingsForm } from "./seo-settings-form";
 import { TelegramSettingsForm } from "./telegram-settings-form";
 import { AiAssistantSettingsForm } from "./ai-assistant-settings-form";
 import { MercadoLibreSettingsForm } from "./mercadolibre-settings-form";
+import { BackupsPanel } from "./backups-panel";
+import { listBackups, MAX_BACKUPS } from "@/lib/backup";
 
-const VALID_TABS = new Set(["popup", "seo", "telegram", "ia", "mercadolibre"]);
+const VALID_TABS = new Set(["popup", "seo", "telegram", "ia", "mercadolibre", "backups"]);
+
+const backupDate = new Intl.DateTimeFormat("es-AR", {
+  dateStyle: "full",
+  timeStyle: "short",
+  hour12: false,
+  timeZone: "America/Argentina/Buenos_Aires",
+});
 
 export default async function ConfiguracionPage({
   searchParams,
 }: {
   searchParams: Promise<{ tab?: string; mlError?: string }>;
 }) {
-  const { tenant } = await requireTenantAdmin();
+  const { tenant, session } = await requireTenantAdmin();
+  const isAdmin = session.user.role === "ADMIN";
   const { tab, mlError } = await searchParams;
   const initialTab = tab && VALID_TABS.has(tab) ? tab : "popup";
-  const [settings, popupConfig, seoSettings, telegramSettings, aiSettings, mlSettings, properties, mlLocations] = await Promise.all([
+  const [settings, popupConfig, seoSettings, telegramSettings, aiSettings, mlSettings, properties, mlLocations, backups] = await Promise.all([
     getStoreSettings(tenant.id),
     getPopupConfig(tenant.id),
     getSeoSettings(tenant.id),
@@ -35,6 +45,7 @@ export default async function ConfiguracionPage({
       orderBy: { city: "asc" },
     }),
     prisma.estateMlLocation.findMany({ where: { tenantId: tenant.id } }),
+    isAdmin ? listBackups() : Promise.resolve([]),
   ]);
 
   const mlLocationRows = properties.map((p) => ({
@@ -64,6 +75,11 @@ export default async function ConfiguracionPage({
           <TabsTrigger value="mercadolibre" className="flex-1">
             Mercado Libre
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="backups" className="flex-1">
+              Copias de seguridad
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="popup">
@@ -97,6 +113,15 @@ export default async function ConfiguracionPage({
             locationRows={mlLocationRows}
           />
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="backups">
+            <BackupsPanel
+              max={MAX_BACKUPS}
+              backups={backups.map((b) => ({ filename: b.filename, sizeBytes: b.sizeBytes, when: backupDate.format(b.createdAt) }))}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

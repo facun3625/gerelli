@@ -15,6 +15,7 @@ import { runEstateBillingCycle } from "@/lib/estate/billing-cron";
 import { agentPermissionsFromForm } from "@/lib/agent-permissions";
 import { modules } from "@/lib/estate/modules";
 import { INQUIRY_STATUSES, logInquiryStatusChange } from "@/lib/estate/inquiry-status";
+import { logActivity } from "@/lib/activity-log";
 import {
   agentSchema,
   amount,
@@ -120,11 +121,20 @@ export async function setEstateInquiryStatus(id: string, status: string) {
 
 export async function deleteEstateInquiry(id: string) {
   try {
-    const { tenant } = await requireTenantAdmin();
+    const { tenant, session } = await requireTenantAdmin();
+    const inquiry = await prisma.estateInquiry.findFirst({
+      where: { id, tenantId: tenant.id },
+      select: { contact: { select: { name: true } } },
+    });
     const { count } = await prisma.estateInquiry.deleteMany({
       where: { id, tenantId: tenant.id },
     });
     if (count === 0) throw new ActionError("Consulta no encontrada");
+    await logActivity(
+      tenant.id,
+      { entity: "consultas", entityId: id, action: "DELETE", summary: `Eliminó la consulta de «${inquiry?.contact.name ?? "—"}»` },
+      { user: session.user },
+    );
     refreshEstate();
     return { ok: true as const };
   } catch (error) {
@@ -587,15 +597,17 @@ export async function saveEstateRecord(
           default:
             throw new ActionError("Sección inválida");
         }
-        await tx.estateAuditEvent.create({
-          data: {
-            tenantId,
-            actorId: session.user.id,
+        const recordName = String(raw.title ?? raw.name ?? raw.address ?? "").trim();
+        await logActivity(
+          tenantId,
+          {
             entity: module,
             entityId: record.id,
             action: id ? "UPDATE" : "CREATE",
+            summary: `${id ? "Editó" : "Creó"} en ${modules[module as keyof typeof modules].title}${recordName ? `: «${recordName}»` : ""}`,
           },
-        });
+          { db: tx, user: session.user },
+        );
         return record.id;
       },
       { isolationLevel: "Serializable" },
@@ -612,11 +624,11 @@ export async function saveEstateRecord(
 // Al destacar, se manda al final del orden manual de destacadas para que no
 // aparezca de golpe primera sin que el admin lo haya elegido así.
 export async function toggleEstatePropertyFeatured(id: string) {
-  const { tenant } = await requireTenantAdmin();
+  const { tenant, session } = await requireTenantAdmin();
   try {
     const property = await prisma.estateProperty.findUnique({
       where: { id_tenantId: { id, tenantId: tenant.id } },
-      select: { featured: true },
+      select: { featured: true, title: true },
     });
     if (!property) throw new ActionError("Propiedad no encontrada");
 
@@ -636,6 +648,16 @@ export async function toggleEstatePropertyFeatured(id: string) {
         data: { featured: true, featuredOrder: (last?.featuredOrder ?? -1) + 1 },
       });
     }
+    await logActivity(
+      tenant.id,
+      {
+        entity: "propiedades",
+        entityId: id,
+        action: property.featured ? "UNFEATURE" : "FEATURE",
+        summary: `${property.featured ? "Sacó de destacadas" : "Destacó"} «${property.title}»`,
+      },
+      { user: session.user },
+    );
     refreshEstate();
     return { ok: true as const };
   } catch (error) {
@@ -662,14 +684,19 @@ export async function reorderFeaturedEstateProperties(orderedIds: string[]) {
 }
 
 export async function deleteEstatePropertyImage(id: string) {
-  const { tenant } = await requireTenantAdmin();
+  const { tenant, session } = await requireTenantAdmin();
   try {
     const media = await prisma.estateMedia.findFirst({
       where: { id, tenantId: tenant.id },
-      select: { id: true },
+      select: { id: true, propertyId: true, property: { select: { title: true } } },
     });
     if (!media) throw new ActionError("Imagen no encontrada");
     await prisma.estateMedia.delete({ where: { id: media.id } });
+    await logActivity(
+      tenant.id,
+      { entity: "propiedades", entityId: media.propertyId, action: "DELETE_IMAGE", summary: `Eliminó una foto de «${media.property.title}»` },
+      { user: session.user },
+    );
     refreshEstate();
     return { ok: true as const };
   } catch (error) {
@@ -747,15 +774,11 @@ export async function cancelEstateCharge(form: FormData) {
           where: { id, tenantId: tenant.id },
           data: { cancelled: true },
         });
-        await tx.estateAuditEvent.create({
-          data: {
-            tenantId: tenant.id,
-            actorId: session.user.id,
-            entity: "charge",
-            entityId: id,
-            action: "CANCEL",
-          },
-        });
+        await logActivity(
+          tenant.id,
+          { entity: "cobranzas", entityId: id, action: "CANCEL", summary: "Anuló una obligación de cobro" },
+          { db: tx, user: session.user },
+        );
       },
       { isolationLevel: "Serializable" },
     );

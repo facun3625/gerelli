@@ -20,6 +20,8 @@ import {
   BuildingIcon,
   UserCheckIcon,
   ChartNoAxesCombinedIcon,
+  MailIcon,
+  HistoryIcon,
 } from "lucide-react";
 
 import { useStoreSettings } from "@/lib/store-settings-context";
@@ -126,6 +128,12 @@ const sections: Section[] = [
     group: "Cuenta",
   },
   {
+    href: "/admin/email-marketing",
+    label: "Email marketing",
+    icon: MailIcon,
+    group: "Cuenta",
+  },
+  {
     href: "/admin/conversaciones",
     label: "Conversaciones IA",
     icon: BotIcon,
@@ -135,6 +143,12 @@ const sections: Section[] = [
     href: "/admin/usuarios",
     label: "Usuarios",
     icon: UsersIcon,
+    group: "Cuenta",
+  },
+  {
+    href: "/admin/actividad",
+    label: "Actividad",
+    icon: HistoryIcon,
     group: "Cuenta",
   },
   {

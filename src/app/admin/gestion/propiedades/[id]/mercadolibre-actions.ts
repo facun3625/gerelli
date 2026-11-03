@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireTenantAdmin } from "@/lib/require-admin";
 import { toUserError } from "@/lib/action-error";
+import { logActivity } from "@/lib/activity-log";
+import { prisma } from "@/lib/prisma";
 import {
   publishListingToMercadoLibre,
   pauseListingOnMercadoLibre,
@@ -12,14 +14,27 @@ import {
   saveListingOptions,
 } from "@/lib/mercadolibre/publish";
 
-async function withTenant<T>(listingId: string, run: (tenantId: string) => Promise<T>) {
+async function withTenant<T>(listingId: string, run: (tenantId: string) => Promise<T>, verb?: string) {
   const { tenant } = await requireTenantAdmin();
-  return run(tenant.id);
+  const result = await run(tenant.id);
+  if (verb) {
+    const listing = await prisma.estateListing.findFirst({
+      where: { id: listingId, tenantId: tenant.id },
+      select: { propertyId: true, property: { select: { title: true } } },
+    });
+    await logActivity(tenant.id, {
+      entity: "propiedades",
+      entityId: listing?.propertyId,
+      action: "MERCADOLIBRE",
+      summary: `${verb} en Mercado Libre «${listing?.property.title ?? "—"}»`,
+    });
+  }
+  return result;
 }
 
 export async function publishToMercadoLibre(propertyId: string, listingId: string) {
   try {
-    await withTenant(listingId, (tenantId) => publishListingToMercadoLibre(tenantId, listingId));
+    await withTenant(listingId, (tenantId) => publishListingToMercadoLibre(tenantId, listingId), "Publicó / actualizó");
     revalidatePath(`/admin/gestion/propiedades/${propertyId}`);
     return { ok: true as const };
   } catch (err) {
@@ -29,7 +44,7 @@ export async function publishToMercadoLibre(propertyId: string, listingId: strin
 
 export async function pauseMercadoLibreListing(propertyId: string, listingId: string) {
   try {
-    await withTenant(listingId, (tenantId) => pauseListingOnMercadoLibre(tenantId, listingId));
+    await withTenant(listingId, (tenantId) => pauseListingOnMercadoLibre(tenantId, listingId), "Pausó");
     revalidatePath(`/admin/gestion/propiedades/${propertyId}`);
     return { ok: true as const };
   } catch (err) {
@@ -39,7 +54,7 @@ export async function pauseMercadoLibreListing(propertyId: string, listingId: st
 
 export async function reactivateMercadoLibreListing(propertyId: string, listingId: string) {
   try {
-    await withTenant(listingId, (tenantId) => reactivateListingOnMercadoLibre(tenantId, listingId));
+    await withTenant(listingId, (tenantId) => reactivateListingOnMercadoLibre(tenantId, listingId), "Reactivó");
     revalidatePath(`/admin/gestion/propiedades/${propertyId}`);
     return { ok: true as const };
   } catch (err) {
@@ -49,7 +64,7 @@ export async function reactivateMercadoLibreListing(propertyId: string, listingI
 
 export async function closeMercadoLibreListing(propertyId: string, listingId: string) {
   try {
-    await withTenant(listingId, (tenantId) => closeListingOnMercadoLibre(tenantId, listingId));
+    await withTenant(listingId, (tenantId) => closeListingOnMercadoLibre(tenantId, listingId), "Finalizó");
     revalidatePath(`/admin/gestion/propiedades/${propertyId}`);
     return { ok: true as const };
   } catch (err) {
