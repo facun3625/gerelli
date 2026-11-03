@@ -165,14 +165,24 @@ export function MercadoLibreSettingsForm({
         <div>
           <p className="text-sm font-medium">Ubicaciones</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Mercado Libre no acepta la ciudad/barrio como texto libre — hace falta resolver una vez el ID real de
-            cada ciudad/barrio que uses en el catálogo. Una vez mapeada, se reutiliza para todas las propiedades de
-            esa zona.
+            Mercado Libre tiene su propia lista de ciudades y barrios. Acá le decís a qué lugar de esa lista
+            corresponde cada zona de tus propiedades — se hace una sola vez por zona.
           </p>
         </div>
         {locationRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">Todavía no hay propiedades cargadas.</p>
-        ) : (
+        ) : null}
+        {locationRows.length > 0 && (
+          <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
+            <li>En cada zona, la provincia y la ciudad se completan solas cuando las encontramos. Si no, buscalas escribiendo.</li>
+            <li>
+              El barrio es opcional. Mercado Libre tiene pocos barrios cargados: si el tuyo no aparece, dejalo vacío (el
+              aviso igual muestra el punto exacto del mapa).
+            </li>
+            <li>Tocá Guardar. La zona queda lista para todas las propiedades que estén ahí.</li>
+          </ol>
+        )}
+        {locationRows.length > 0 && (
           <div className="flex flex-col gap-3">
             {locationRows.map((row) => (
               <LocationMappingRow key={`${row.city}__${row.neighborhood}`} row={row} />
@@ -183,6 +193,9 @@ export function MercadoLibreSettingsForm({
     </div>
   );
 }
+
+const norm = (value: string) =>
+  value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
 function LocationMappingRow({ row }: { row: LocationRow }) {
   const [editing, setEditing] = useState(!row.mapping);
@@ -203,11 +216,18 @@ function LocationMappingRow({ row }: { row: LocationRow }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing]);
 
+  // Sugerencia automática: busca en las listas de ML algo con el mismo
+  // nombre que la ciudad/barrio de la propiedad ("Santa Fe" → provincia
+  // Santa Fe → "Santa Fe capital"). Si no encuentra, deja el campo para
+  // elegir a mano.
   async function loadStates() {
     if (states) return;
     setLoadingStates(true);
     try {
-      setStates(await fetchMlStates());
+      const list = await fetchMlStates();
+      const suggested = list.find((s) => norm(s.name) === norm(row.city));
+      setStates(list);
+      if (suggested && !stateId) void onStateChange(suggested.id, true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudieron cargar las provincias");
     } finally {
@@ -215,7 +235,7 @@ function LocationMappingRow({ row }: { row: LocationRow }) {
     }
   }
 
-  async function onStateChange(id: string) {
+  async function onStateChange(id: string, auto = false) {
     setStateId(id);
     setCityId("");
     setNeighborhoodId("");
@@ -224,7 +244,14 @@ function LocationMappingRow({ row }: { row: LocationRow }) {
     if (!id) return;
     setLoadingCities(true);
     try {
-      setCities(await fetchMlCities(id));
+      const list = await fetchMlCities(id);
+      const city = norm(row.city);
+      const suggested = auto
+        ? (list.find((c) => norm(c.name) === city) ?? list.find((c) => norm(c.name).startsWith(city)))
+        : undefined;
+      if (suggested) setCityId(suggested.id);
+      setCities(list);
+      if (suggested) void onCityChange(suggested.id, true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudieron cargar las ciudades");
     } finally {
@@ -232,14 +259,18 @@ function LocationMappingRow({ row }: { row: LocationRow }) {
     }
   }
 
-  async function onCityChange(id: string) {
+  async function onCityChange(id: string, auto = false) {
     setCityId(id);
     setNeighborhoodId("");
     setNeighborhoods(null);
     if (!id) return;
     setLoadingNeighborhoods(true);
     try {
-      setNeighborhoods(await fetchMlNeighborhoods(id));
+      const list = await fetchMlNeighborhoods(id);
+      const hood = norm(row.neighborhood);
+      const suggested = auto && hood ? list.find((n) => norm(n.name) === hood) : undefined;
+      if (suggested) setNeighborhoodId(suggested.id);
+      setNeighborhoods(list);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudieron cargar los barrios");
     } finally {
