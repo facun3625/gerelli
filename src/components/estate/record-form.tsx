@@ -1,10 +1,12 @@
 "use client";
-import { useRef, useState, useTransition } from "react";
+import { useId, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { CheckCircle2, Loader2, Lock, UserRoundPlusIcon } from "lucide-react";
 import { modules, labels } from "@/lib/estate/modules";
 import { saveEstateRecord } from "@/app/admin/gestion/actions";
+import { SECTION_NAV_ACTIONS_ID } from "@/components/estate/section-nav";
 import { inputClass } from "@/components/estate/form-field-class";
 import { PropertyImagesManager } from "@/components/estate/property-images-manager";
 import { ToggleField } from "@/components/estate/toggle-field";
@@ -37,6 +39,8 @@ const PropertyLocationPicker = dynamic(
   },
 );
 
+const noopSubscribe = () => () => {};
+
 export function RecordForm({
   module,
   id,
@@ -68,8 +72,22 @@ export function RecordForm({
   const ref = useRef<HTMLFormElement>(null);
   const router = useRouter();
   const markDirty = () => setDirty(true);
+  const formId = useId();
+  // El hueco del SectionNav ya está en el DOM cuando hidrata el form (se
+  // renderizan en el mismo server component); en el server no hay DOM.
+  const navSlot = useSyncExternalStore(
+    noopSubscribe,
+    () => document.getElementById(SECTION_NAV_ACTIONS_ID),
+    () => null,
+  );
+  const submitLabel = pending
+    ? "Guardando…"
+    : id
+      ? "Guardar cambios"
+      : `Crear ${modules[module].singular}`;
   return (
     <form
+      id={formId}
       ref={ref}
       onChange={markDirty}
       action={(form) =>
@@ -507,12 +525,29 @@ export function RecordForm({
         className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
       >
         {pending && <Loader2 className="size-4 animate-spin" />}
-        {pending
-          ? "Guardando…"
-          : id
-            ? "Guardar cambios"
-            : `Crear ${modules[module].singular}`}
+        {submitLabel}
       </button>
+      {navSlot &&
+        createPortal(
+          <div className="space-y-2">
+            <button
+              type="submit"
+              form={formId}
+              disabled={pending || !dirty}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {pending && <Loader2 className="size-4 animate-spin" />}
+              {submitLabel}
+            </button>
+            {saved && !dirty && (
+              <p className="flex items-center justify-center gap-1.5 text-xs text-emerald-600">
+                <CheckCircle2 className="size-3.5" />
+                Guardado
+              </p>
+            )}
+          </div>,
+          navSlot,
+        )}
     </form>
   );
 }

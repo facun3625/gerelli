@@ -7,6 +7,8 @@ type NavItem = { id: string; label: string; icon: ReactNode };
 
 const TOP_OFFSET = 24;
 
+export const SECTION_NAV_ACTIONS_ID = "section-nav-actions";
+
 // Busca el ancestro que de verdad scrollea. El scroll real de la página no
 // es el <html> (globals.css le pone scroll-behavior:smooth pero no aplica
 // acá) sino el <main> del layout del admin (overflow-y-auto propio).
@@ -119,6 +121,9 @@ export function SectionNav({ items }: { items: NavItem[] }) {
           {item.label}
         </a>
       ))}
+      {/* RecordForm monta acá (portal) una copia del botón de guardar, así
+          queda a mano mientras se scrollea la ficha. */}
+      <div id={SECTION_NAV_ACTIONS_ID} className="mt-3 hidden lg:block" />
     </nav>
   );
 }
