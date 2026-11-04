@@ -10,6 +10,7 @@ import { toWhatsAppLink, toInstagramLink } from "@/lib/social-links";
 import { WhatsAppIcon, InstagramIcon } from "./social-icons";
 import { RichText } from "./rich-text";
 import { NewsletterSignup } from "./newsletter-signup";
+import { KubboLogo } from "@/components/catalog/kubbo-logo";
 
 export function StoreFooter() {
   const { newsletterSignup } = useStoreSettings();
@@ -283,9 +284,10 @@ function StoreFooterBody() {
             href="https://kubbo.com.ar"
             target="_blank"
             rel="noreferrer"
-            className="font-semibold text-current/80 transition-opacity hover:opacity-80"
+            className="inline-flex items-center gap-2 font-semibold text-current/80 transition-opacity hover:opacity-80"
           >
-            kubbo.com.ar
+            <KubboLogo />
+            <span>kubbo.com.ar</span>
           </a>
         </div>
       </footer>
@@ -297,8 +299,9 @@ function FooterCredit({ minimal = false }: { minimal?: boolean }) {
   return (
     <div className={`${minimal ? "text-neutral-400" : "border-t border-current/10 pt-6 text-current/55"} flex flex-wrap items-center justify-center gap-2 text-center text-sm`}>
       <span>Desarrollado por</span>
-      <a href="https://kubbo.com.ar" target="_blank" rel="noreferrer" className="font-semibold transition-opacity hover:opacity-80">
-        kubbo.com.ar
+      <a href="https://kubbo.com.ar" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 font-semibold transition-opacity hover:opacity-80">
+        <KubboLogo />
+        <span>kubbo.com.ar</span>
       </a>
     </div>
   );
