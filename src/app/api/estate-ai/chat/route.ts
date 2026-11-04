@@ -72,13 +72,17 @@ export async function POST(request: NextRequest) {
     { role: "user" as const, content: parsed.message },
   ];
 
+  const startedAt = Date.now();
+  const model = settings.model || DEFAULT_AI_MODELS[settings.provider];
   try {
     const reply = await runAssistantProvider(settings.provider, tenant.id, {
       apiKey: settings.apiKey,
-      model: settings.model || DEFAULT_AI_MODELS[settings.provider],
+      model,
       instructions: buildAssistantInstructions(settings.instructions),
       history,
     });
+    // Para medir la demora desde pm2 logs: grep "estate-ai chat ok".
+    console.info(`estate-ai chat ok ${settings.provider}/${model} ${Date.now() - startedAt}ms`);
     const cleanReply = reply.text.trim().slice(0, 5_000);
     const conversation = await prisma.estateAiConversation.upsert({
       where: { tenantId_sessionId: { tenantId: tenant.id, sessionId: parsed.sessionId } },
