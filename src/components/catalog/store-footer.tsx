@@ -278,16 +278,16 @@ function StoreFooterBody() {
           )}
         </div>
 
-        <div className="mx-auto mt-10 flex w-full max-w-[1440px] flex-wrap items-center justify-center gap-2 border-t border-current/10 px-4 pt-6 text-center text-sm text-current/60 lg:px-8">
+        <div className="mx-auto mt-10 flex w-full max-w-[1440px] flex-wrap items-baseline justify-center gap-2 border-t border-current/10 px-4 pt-6 text-center text-sm text-current/60 lg:px-8">
           <span>Desarrollado por</span>
           <a
             href="https://kubbo.com.ar"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 font-semibold text-current/80 transition-opacity hover:opacity-80"
+            aria-label="kubbo.com.ar"
+            className="transition-opacity hover:opacity-80"
           >
-            <KubboLogo />
-            <span>kubbo.com.ar</span>
+            <KubboLogo className="inline-block h-3.5 w-auto" />
           </a>
         </div>
       </footer>
@@ -297,11 +297,10 @@ function StoreFooterBody() {
 
 function FooterCredit({ minimal = false }: { minimal?: boolean }) {
   return (
-    <div className={`${minimal ? "text-neutral-400" : "border-t border-current/10 pt-6 text-current/55"} flex flex-wrap items-center justify-center gap-2 text-center text-sm`}>
+    <div className={`${minimal ? "text-neutral-400" : "border-t border-current/10 pt-6 text-current/55"} flex flex-wrap items-baseline justify-center gap-2 text-center text-sm`}>
       <span>Desarrollado por</span>
-      <a href="https://kubbo.com.ar" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 font-semibold transition-opacity hover:opacity-80">
-        <KubboLogo />
-        <span>kubbo.com.ar</span>
+      <a href="https://kubbo.com.ar" target="_blank" rel="noreferrer" aria-label="kubbo.com.ar" className="transition-opacity hover:opacity-80">
+        <KubboLogo className="inline-block h-3.5 w-auto" />
       </a>
     </div>
   );
