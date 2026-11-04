@@ -285,9 +285,9 @@ function StoreFooterBody() {
             target="_blank"
             rel="noreferrer"
             aria-label="kubbo.com.ar"
-            className="transition-opacity hover:opacity-80"
+            className="inline-flex transition-opacity hover:opacity-80"
           >
-            <KubboLogo className="inline-block h-3.5 w-auto" />
+            <KubboLogo className="block h-3.5 w-auto" />
           </a>
         </div>
       </footer>
@@ -299,8 +299,8 @@ function FooterCredit({ minimal = false }: { minimal?: boolean }) {
   return (
     <div className={`${minimal ? "text-neutral-400" : "border-t border-current/10 pt-6 text-current/55"} flex flex-wrap items-baseline justify-center gap-2 text-center text-sm`}>
       <span>Desarrollado por</span>
-      <a href="https://kubbo.com.ar" target="_blank" rel="noreferrer" aria-label="kubbo.com.ar" className="transition-opacity hover:opacity-80">
-        <KubboLogo className="inline-block h-3.5 w-auto" />
+      <a href="https://kubbo.com.ar" target="_blank" rel="noreferrer" aria-label="kubbo.com.ar" className="inline-flex transition-opacity hover:opacity-80">
+        <KubboLogo className="block h-3.5 w-auto" />
       </a>
     </div>
   );
