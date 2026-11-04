@@ -1,5 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
+import { scrollIntoViewOnMount } from "@/lib/scroll-into-view";
 import { sendContactInquiry } from "./actions";
 import { inputClass } from "@/components/estate/record-form";
 
@@ -10,7 +11,7 @@ export function ContactForm() {
 
   if (sent)
     return (
-      <p role="status" className="rounded-2xl bg-primary/10 p-6 text-sm text-primary">
+      <p ref={scrollIntoViewOnMount} role="status" className="rounded-2xl bg-primary/10 p-6 text-sm text-primary">
         Recibimos tu consulta. Te vamos a responder a la brevedad.
       </p>
     );

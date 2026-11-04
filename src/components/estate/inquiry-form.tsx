@@ -1,5 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
+import { scrollIntoViewOnMount } from "@/lib/scroll-into-view";
 import { inquireProperty } from "@/app/propiedades/actions";
 import { inputClass } from "./record-form";
 export function InquiryForm({ propertyId }: { propertyId: string }) {
@@ -8,7 +9,7 @@ export function InquiryForm({ propertyId }: { propertyId: string }) {
   const [sent, setSent] = useState(false);
   if (sent)
     return (
-      <p role="status" className="rounded-xl bg-emerald-500/10 p-5 text-sm">
+      <p ref={scrollIntoViewOnMount} role="status" className="rounded-xl bg-emerald-500/10 p-5 text-sm">
         Recibimos tu consulta. La inmobiliaria se comunicará con vos.
       </p>
     );

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
+import { scrollIntoViewOnMount } from "@/lib/scroll-into-view";
 import { Bell, CheckCircle2 } from "lucide-react";
 import { subscribeToAlerts } from "./actions";
 import { SearchCriteriaFields, type SearchOptions } from "@/components/estate/search-criteria-fields";
@@ -9,7 +10,7 @@ export function AlertForm({ options }: { options: SearchOptions }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
-  if (sent) return <div role="status" className="flex items-start gap-3 rounded-2xl bg-primary/10 p-6 text-primary"><CheckCircle2 className="mt-0.5 size-5 shrink-0" /><div><p className="font-semibold">Tu búsqueda quedó guardada</p><p className="mt-1 text-sm">La inmobiliaria podrá ver tus requisitos y las propiedades que coinciden para contactarte.</p></div></div>;
+  if (sent) return <div ref={scrollIntoViewOnMount} role="status" className="flex items-start gap-3 rounded-2xl bg-primary/10 p-6 text-primary"><CheckCircle2 className="mt-0.5 size-5 shrink-0" /><div><p className="font-semibold">Tu búsqueda quedó guardada</p><p className="mt-1 text-sm">La inmobiliaria podrá ver tus requisitos y las propiedades que coinciden para contactarte.</p></div></div>;
   return <form className="rounded-2xl border bg-card p-6 shadow-sm sm:p-8" action={(form) => start(async () => {
     setError("");
     try {
