@@ -21,14 +21,12 @@ export async function runGeminiAssistant(tenantId: string, input: AssistantProvi
     model: input.model,
     system_instruction: input.instructions,
     tools,
-    store: false,
+    // store: true para poder encadenar las rondas con previous_interaction_id:
+    // Gemini rechaza (400) un historial armado a mano que no deje cada
+    // llamada a función justo después del turno del usuario.
+    store: true,
     generation_config: { thinking_level: "low" as const, max_output_tokens: 600 },
   };
-  // Gemini exige que cada llamada a función venga justo después de un turno
-  // del usuario: por eso el historial que se reenvía arranca siempre con el
-  // mensaje del cliente y va sumando los pasos de cada ronda.
-  const userTurn = { type: "user_input" as const, content: [{ type: "text" as const, text: transcript(input) }] };
-  let turns: unknown[] = [userTurn];
   let interaction = await client.interactions.create({ ...requestConfig, input: transcript(input) });
   let properties: AssistantProperty[] = [];
   let tokens = interaction.usage?.total_tokens ?? 0;
@@ -66,10 +64,10 @@ export async function runGeminiAssistant(tenantId: string, input: AssistantProvi
         }
       }),
     );
-    turns = [...turns, ...(interaction.steps ?? []), ...functionResults];
     interaction = await client.interactions.create({
       ...requestConfig,
-      input: turns as Parameters<typeof client.interactions.create>[0]["input"],
+      previous_interaction_id: interaction.id,
+      input: functionResults,
     });
     tokens += interaction.usage?.total_tokens ?? 0;
   }
