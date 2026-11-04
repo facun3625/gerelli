@@ -1,6 +1,8 @@
 import { EstateCatalog } from "@/components/estate/catalog";
 import { getCurrentTenant } from "@/lib/tenant";
 
+export const metadata = { alternates: { canonical: "/" } };
+
 export default async function Home() {
   const tenant = await getCurrentTenant();
   if (!tenant) {

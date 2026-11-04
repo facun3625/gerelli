@@ -18,6 +18,8 @@ import { PropertyGallery } from "@/components/estate/property-gallery";
 import { DevelopmentMapLoader } from "@/components/estate/development-map-loader";
 import { money, labels } from "@/lib/estate/modules";
 import { toWhatsAppMessageLink } from "@/lib/social-links";
+import type { Metadata } from "next";
+import { jsonLdScript, propertyJsonLd, propertySeoDescription, propertySeoTitle, shareImageUrl } from "@/lib/seo";
 async function getProperty(id: string) {
   const tenant = await getCurrentTenant();
   if (!tenant) notFound();
@@ -41,14 +43,31 @@ export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
-}) {
+}): Promise<Metadata> {
   const p = await getProperty((await params).id);
+  const { storeName } = await getStoreSettings(p.tenantId);
+  const title = propertySeoTitle(p);
+  const description = propertySeoDescription(p, storeName);
+  const path = `/propiedades/${p.id}`;
+  const images = p.media[0] ? [{ url: shareImageUrl(p.media[0].id), width: 1200, height: 800, alt: p.title }] : undefined;
   return {
-    title: p.title,
-    description: p.description.slice(0, 160),
+    title,
+    description,
+    alternates: { canonical: path },
     openGraph: {
-      title: p.title,
-      ...(p.media[0] ? { images: [p.media[0].url] } : {}),
+      title,
+      description,
+      url: path,
+      siteName: storeName,
+      locale: "es_AR",
+      type: "website",
+      ...(images ? { images } : {}),
+    },
+    twitter: {
+      card: images ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(images ? { images: [images[0].url] } : {}),
     },
   };
 }
@@ -104,6 +123,7 @@ export default async function PropertyPage({
   const shareUrl = `${protocol}://${host}/propiedades/${p.id}`;
   return (
     <div className="public-inner-page public-detail-page flex flex-1 flex-col">
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(propertyJsonLd(p, storeSettings))} />
       <StoreHero />
       <main className="mx-auto w-full max-w-[1440px] flex-1 bg-background">
         <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">

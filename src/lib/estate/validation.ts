@@ -133,6 +133,8 @@ export const propertySchema = z
     coveredArea: optionalAmount,
     totalArea: optionalAmount,
     description: notes,
+    seoTitle: z.string().trim().max(120, "El título para Google puede tener hasta 120 caracteres").default(""),
+    seoDescription: z.string().trim().max(300, "La descripción para Google puede tener hasta 300 caracteres").default(""),
     videoUrl: optionalUrl,
     orientation: z.union([z.literal(""), z.enum(ORIENTATIONS)]).default("").transform((v) => v || null),
     petsPolicy: z.union([z.literal(""), z.enum(PET_POLICIES)]).default("").transform((v) => v || null),

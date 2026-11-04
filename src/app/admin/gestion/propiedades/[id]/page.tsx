@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, BadgeDollarSignIcon, ImageIcon, MailIcon, MapPinIcon, Tags, TextIcon } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BadgeDollarSignIcon, ImageIcon, MailIcon, MapPinIcon, Tags, TextIcon, SearchIcon } from "lucide-react";
 import { requireTenantAdmin } from "@/lib/require-admin";
 import { prisma } from "@/lib/prisma";
 import { estateRows, estateOptions } from "@/lib/estate/data";
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { id: "section-precio", label: "Precio y características", icon: <BadgeDollarSignIcon className="size-4" /> },
   { id: "section-ubicacion", label: "Ubicación", icon: <MapPinIcon className="size-4" /> },
   { id: "section-media", label: "Fotos, video y plano", icon: <ImageIcon className="size-4" /> },
+  { id: "section-seo", label: "Google (SEO)", icon: <SearchIcon className="size-4" /> },
 ];
 
 export default async function EditarPropiedadPage({

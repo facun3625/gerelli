@@ -17,6 +17,7 @@ export const metadata = {
   title: "Servicios · Arquitectura",
   description:
     "Asesoramiento, anteproyecto, proyecto ejecutivo y dirección de obra.",
+  alternates: { canonical: "/arquitectura/servicios" },
 };
 
 export default async function ArquitecturaServiciosPage() {

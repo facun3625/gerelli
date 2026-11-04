@@ -49,6 +49,12 @@ const VALUES = [
   },
 ] as const;
 
+export const metadata = {
+  title: "Sobre nosotros",
+  description: "Conocé a la inmobiliaria: quiénes somos, cómo trabajamos y dónde encontrarnos.",
+  alternates: { canonical: "/sobre-nosotros" },
+};
+
 export default async function SobreNosotrosPage() {
   const tenant = await getCurrentTenant();
   if (!tenant) notFound();

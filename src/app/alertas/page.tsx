@@ -6,7 +6,11 @@ import { StoreFooter } from "@/components/catalog/store-footer";
 import { getSearchOptions } from "@/lib/estate/search-options";
 import { AlertForm } from "./alert-form";
 
-export const metadata = { title: "Recibí alertas de propiedades" };
+export const metadata = {
+  title: "Recibí alertas de propiedades",
+  description: "Dejanos qué buscás y te avisamos apenas entra una propiedad que coincida.",
+  alternates: { canonical: "/alertas" },
+};
 
 export default async function AlertasPage() {
   const tenant = await getCurrentTenant();

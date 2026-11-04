@@ -433,6 +433,10 @@ model EstateProperty {
   petsPolicy     String?
   creditEligible Boolean?
   floorPlanUrl   String?
+  // Título y descripción para Google: vacíos = se arman solos con tipo,
+  // operación, barrio y precio (ver src/lib/seo.ts).
+  seoTitle       String                   @default("")
+  seoDescription String                   @default("")
   propertyType   String
   address        String
   city           String

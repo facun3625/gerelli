@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { plainText, shareImageUrl, truncate } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { Building2, CalendarDays, Check, MapPin } from "lucide-react";
 
@@ -39,11 +41,26 @@ export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
-}) {
+}): Promise<Metadata> {
   const development = await getDevelopment((await params).id);
+  const stage = STAGES[development.stage];
+  const title = [development.name, stage ? ` · ${stage}` : "", development.city ? ` en ${development.city}` : ""].join("");
+  const text = plainText(development.description);
+  const description = truncate(text || `${development.name}${development.city ? ` en ${development.city}` : ""}.`, 160);
+  const path = `/arquitectura/obras/${development.id}`;
+  const image = development.images[0];
   return {
-    title: development.name,
-    description: `${development.name} en ${development.city}`,
+    title,
+    description,
+    alternates: { canonical: path },
+    openGraph: {
+      title,
+      description,
+      url: path,
+      locale: "es_AR",
+      type: "website",
+      ...(image ? { images: [{ url: shareImageUrl(image.id), width: 1200, height: 800, alt: development.name }] } : {}),
+    },
   };
 }
 

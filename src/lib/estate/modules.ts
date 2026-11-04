@@ -200,6 +200,19 @@ export const modules: Record<string, Module> = {
         label: "Video",
         hint: "Pegá un link de YouTube, Vimeo, Google Drive o Dropbox — se reproduce en la publicación, no se sube ningún archivo al servidor.",
       },
+
+      { name: "section-seo", type: "section", label: "Google (SEO)" },
+      {
+        name: "seoTitle",
+        label: "Título para Google",
+        hint: "Opcional. Vacío: se arma solo con tipo, operación, barrio, ciudad y precio (p. ej. «Departamento 1 dormitorio en venta en Candioti Norte, Santa Fe · USD 90.000»).",
+      },
+      {
+        name: "seoDescription",
+        label: "Descripción para Google",
+        type: "textarea",
+        hint: "Opcional. Es el texto que aparece debajo del título en Google y al compartir por WhatsApp. Vacío: se usa el comienzo de la descripción pública. Ideal: 140–160 caracteres.",
+      },
     ],
   },
   consultas: {

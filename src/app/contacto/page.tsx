@@ -8,7 +8,11 @@ import { toWhatsAppLink, toInstagramLink } from "@/lib/social-links";
 import { WhatsAppIcon, InstagramIcon } from "@/components/catalog/social-icons";
 import { ContactForm } from "./contact-form";
 
-export const metadata = { title: "Contacto" };
+export const metadata = {
+  title: "Contacto",
+  description: "Escribinos o llamanos: te ayudamos a comprar, vender, alquilar o tasar tu propiedad.",
+  alternates: { canonical: "/contacto" },
+};
 
 export default async function ContactoPage() {
   const tenant = await getCurrentTenant();

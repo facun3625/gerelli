@@ -194,6 +194,7 @@ export function RecordForm({
               key={field.name}
               className={[
                 type === "textarea" ||
+                field.name === "seoTitle" ||
                 type === "roles" ||
                 type === "file" ||
                 type === "floor-plan" ||

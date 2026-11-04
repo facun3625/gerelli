@@ -1,12 +1,28 @@
 import type { MetadataRoute } from "next";
 
+import { absoluteUrl } from "@/lib/site-url";
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/", "/registro", "/demo", "/revendedores", "/preguntas-frecuentes", "/terminos", "/privacidad"],
-      disallow: ["/admin/", "/platform/", "/registro/", "/socios", "/api/"],
+      allow: ["/", "/api/email/picture/"],
+      // Panel, API y páginas personales: no tienen nada que indexar.
+      disallow: [
+        "/admin/",
+        "/api/",
+        "/agente",
+        "/perfil",
+        "/favoritos",
+        "/mi-alquiler",
+        "/login",
+        "/recuperar-contrasena",
+        "/restablecer-contrasena",
+        "/cerrar-sesion",
+        "/baja",
+      ],
     },
-    sitemap: "https://urbi.com.ar/sitemap.xml",
+    sitemap: absoluteUrl("/sitemap.xml"),
+    host: absoluteUrl("/"),
   };
 }

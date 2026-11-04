@@ -6,8 +6,9 @@ import { getStoreSettings } from "@/lib/settings";
 import { labels, money } from "@/lib/estate/modules";
 import type { MailBrand, MailItem } from "@/lib/email-marketing/templates";
 
-const ROOT_DOMAIN = process.env.ROOT_DOMAIN ?? "localhost:3011";
-export const SITE_URL = `${ROOT_DOMAIN.startsWith("localhost") ? "http" : "https"}://${ROOT_DOMAIN}`;
+import { SITE_URL } from "@/lib/site-url";
+
+export { SITE_URL };
 
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();

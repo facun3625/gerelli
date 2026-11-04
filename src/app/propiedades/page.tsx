@@ -15,7 +15,13 @@ import { estatePropertyFilterOptions } from "@/lib/estate/data";
 import { parseCatalogFilters, buildPublishedPropertyWhere } from "@/lib/estate/catalog-filters";
 import { getCatalogFilterSettings, getCatalogFilterLabels } from "@/lib/estate/catalog-filter-settings";
 
-export const metadata = { title: "Resultados de búsqueda" };
+// Con filtros en la URL igual apunta a /propiedades: así Google no indexa
+// cada combinación de filtros como una página distinta.
+export const metadata = {
+  title: "Propiedades en venta y alquiler",
+  description: "Casas, departamentos, terrenos y locales en venta y alquiler. Filtrá por zona, tipo, precio y dormitorios.",
+  alternates: { canonical: "/propiedades" },
+};
 
 export default async function PropiedadesPage({
   searchParams,

@@ -11,7 +11,11 @@ import { estatePropertyFilterOptions } from "@/lib/estate/data";
 import { parseCatalogFilters, buildPublishedPropertyWhere } from "@/lib/estate/catalog-filters";
 import { getCatalogFilterSettings, getCatalogFilterLabels } from "@/lib/estate/catalog-filter-settings";
 
-export const metadata = { title: "Propiedades en el mapa" };
+export const metadata = {
+  title: "Propiedades en el mapa",
+  description: "Buscá casas, departamentos y terrenos en venta y alquiler sobre el mapa.",
+  alternates: { canonical: "/mapa" },
+};
 
 export default async function MapaPage({
   searchParams,

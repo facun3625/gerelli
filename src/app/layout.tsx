@@ -12,6 +12,8 @@ import { StorePwaProvider } from "@/components/store/store-pwa-provider";
 import { PublicAnalyticsTracker } from "@/components/estate/public-analytics-tracker";
 import { AiAgentWidget } from "@/components/estate/ai-agent-widget";
 import { getAssistantStatus } from "@/lib/ai-agent/status";
+import { SITE_URL } from "@/lib/site-url";
+import { jsonLdScript, organizationJsonLd } from "@/lib/seo";
 
 const barlow = Barlow({
   variable: "--font-sans",
@@ -34,41 +36,42 @@ export async function generateMetadata(): Promise<Metadata> {
     };
   }
 
-  const [{ storeName, faviconUrl }, seo] = await Promise.all([
+  const [{ storeName, faviconUrl, coverUrl, logoUrl, city }, seo] = await Promise.all([
     getStoreSettings(tenant.id),
     getSeoSettings(tenant.id),
   ]);
   const title = seo.title || storeName;
   const description =
-    seo.description || `Propiedades en venta y alquiler en ${storeName}`;
+    seo.description ||
+    `Propiedades en venta y alquiler${city ? ` en ${city}` : ""}. ${storeName}: casas, departamentos, terrenos y emprendimientos.`;
+  // Imagen al compartir el sitio: la cargada en SEO, si no la portada o el logo.
+  const shareImage = seo.ogImageUrl || coverUrl || logoUrl;
   return {
-    title,
+    metadataBase: new URL(SITE_URL),
+    // Las páginas internas ponen su título y se le suma el nombre de la
+    // inmobiliaria: «Contacto | Gerelli Correnti».
+    title: { default: title, template: `%s | ${storeName}` },
     description,
+    applicationName: storeName,
     icons: faviconUrl ? { icon: faviconUrl } : undefined,
     // El layout de /admin pisa esto con su propio manifest (metadata de
     // hijo gana sobre la de padre), así que las páginas del panel siguen
     // usando /admin/manifest.webmanifest sin tocar nada acá.
     manifest: "/manifest.webmanifest",
-    // El resto de la metadata (OG, Twitter card) solo se completa si hay
-    // imagen propia cargada — sin eso no hay nada mejor que mostrar que el
-    // título y la descripción de arriba, así que no vale la pena armar el
-    // bloque entero.
-    ...(seo.ogImageUrl && {
-      openGraph: {
-        title,
-        description,
-        siteName: storeName,
-        locale: "es_AR",
-        type: "website",
-        images: [{ url: seo.ogImageUrl }],
-      },
-      twitter: {
-        card: "summary_large_image" as const,
-        title,
-        description,
-        images: [seo.ogImageUrl],
-      },
-    }),
+    openGraph: {
+      title,
+      description,
+      siteName: storeName,
+      locale: "es_AR",
+      type: "website",
+      ...(shareImage ? { images: [{ url: shareImage }] } : {}),
+    },
+    twitter: {
+      card: shareImage ? ("summary_large_image" as const) : ("summary" as const),
+      title,
+      description,
+      ...(shareImage ? { images: [shareImage] } : {}),
+    },
   };
 }
 
@@ -122,6 +125,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 className={`contents store-template-${storeSettings.template}`}
                 style={buttonThemeStyle}
               >
+                <script
+                  type="application/ld+json"
+                  dangerouslySetInnerHTML={jsonLdScript(organizationJsonLd(storeSettings))}
+                />
                 <StorePwaProvider>
                   <PublicAnalyticsTracker />
                   {children}

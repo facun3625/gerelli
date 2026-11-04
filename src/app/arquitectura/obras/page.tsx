@@ -17,6 +17,7 @@ import { ArqEditButton } from "@/components/arquitectura/arq-edit-button";
 export const metadata = {
   title: "Obras · Arquitectura",
   description: "Obras diseñadas y dirigidas por el estudio.",
+  alternates: { canonical: "/arquitectura/obras" },
 };
 
 export default async function ArquitecturaObrasPage({

@@ -17,6 +17,7 @@ export const metadata = {
   title: "Equipo · Arquitectura",
   description:
     "Equipo interdisciplinario que integra inmobiliaria y estudio de arquitectura.",
+  alternates: { canonical: "/arquitectura/equipo" },
 };
 
 export default async function ArquitecturaEquipoPage() {
