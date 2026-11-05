@@ -27,6 +27,11 @@ export function toArgentineWhatsAppDigits(phone: string) {
   return digits.length === 10 ? `549${digits}` : phone.replace(/[^\d]/g, "");
 }
 
+// Abre WhatsApp Web con el mensaje listo (panel, para escribirle a un cliente).
+export function toWhatsAppWebLink(phone: string, text: string) {
+  return `https://web.whatsapp.com/send?phone=${toArgentineWhatsAppDigits(phone)}&text=${encodeURIComponent(text)}`;
+}
+
 export function toInstagramLink(value: string) {
   if (/^https?:\/\//i.test(value)) return value;
   const handle = value.replace(/^@/, "");

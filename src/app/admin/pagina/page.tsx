@@ -1,4 +1,5 @@
 import { getStoreSettings } from "@/lib/settings";
+import { CoverVideoField } from "./cover-video-field";
 import { getAboutContent } from "@/lib/about";
 import { getCatalogFilterSettings, getCatalogFilterLabels } from "@/lib/estate/catalog-filter-settings";
 import { requireTenantAdmin } from "@/lib/require-admin";
@@ -91,7 +92,10 @@ export default async function PaginaPage({
         </TabsContent>
 
         <TabsContent value="home">
-          <HomeForm key={JSON.stringify(settings)} settings={settings} />
+          <div className="flex flex-col gap-4">
+            <HomeForm key={JSON.stringify(settings)} settings={settings} />
+            <CoverVideoField key={settings.coverVideoUrl ?? "sin-video"} url={settings.coverVideoUrl} />
+          </div>
         </TabsContent>
 
         <TabsContent value="buscador">

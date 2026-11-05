@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { requireTenantAdmin } from "@/lib/require-admin";
 import { WhatsAppIcon } from "@/components/catalog/social-icons";
 import { toWhatsAppMessageLink } from "@/lib/social-links";
+import { getStoreSettings, getWhatsappTemplates } from "@/lib/settings";
+import { renderWhatsappTemplate } from "@/lib/whatsapp-templates";
 import { ConversationActions } from "../ConversationActions";
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short" });
@@ -16,6 +18,7 @@ function isLikelyPhone(phone: string): boolean {
 export default async function AdminConversacionDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { tenant } = await requireTenantAdmin();
+  const [{ storeName }, whatsappTemplates] = await Promise.all([getStoreSettings(tenant.id), getWhatsappTemplates(tenant.id)]);
   const conversation = await prisma.estateAiConversation.findUnique({
     where: { id, tenantId: tenant.id },
     include: { messages: { orderBy: { createdAt: "asc" } } },
@@ -56,7 +59,7 @@ export default async function AdminConversacionDetallePage({ params }: { params:
         <div className="flex flex-col items-start gap-3 sm:items-end">
           {canWhatsApp && (
             <a
-              href={toWhatsAppMessageLink(conversation.phone!, `Hola ${conversation.name ?? ""}! Te escribimos por la consulta que hiciste en el chat.`)}
+              href={toWhatsAppMessageLink(conversation.phone!, renderWhatsappTemplate(whatsappTemplates.aiConversation, { nombre: conversation.name ?? "", inmobiliaria: storeName }))}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white"

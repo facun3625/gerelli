@@ -11,6 +11,7 @@ import { StoreNav } from "./store-nav";
 import { MobileHamburgerMenu } from "./mobile-hamburger-menu";
 import { FavoritesNavButton } from "./favorites-nav-button";
 import { StoreTopBar } from "./store-top-bar";
+import { SiteSearchButton } from "@/components/search/site-search-button";
 
 function Brand({ compact = false, minimal = false, classic = false, plain = false }: { compact?: boolean; minimal?: boolean; classic?: boolean; plain?: boolean }) {
   const { storeName, logoUrl, showNameInHeader, logoHeight } = useStoreSettings();
@@ -56,6 +57,7 @@ function MobileHeader({ minimal = false, wide = false }: { minimal?: boolean; wi
       <div className="mx-auto flex w-full min-w-0 max-w-[1440px] items-center justify-between gap-3">
         <Brand compact minimal={minimal} classic={!wide && !minimal} plain={wide && !minimal} />
         <div className="flex shrink-0 items-center gap-1">
+          <SiteSearchButton iconOnly />
           <FavoritesNavButton iconOnly />
           <AccountMenu overlay iconOnly />
           <MobileHamburgerMenu />
@@ -81,6 +83,7 @@ export function StoreHero() {
             <div className="ml-auto flex items-center gap-7">
               <StoreNav />
               <div className="flex items-center gap-4 border-l border-current/15 pl-6">
+                <SiteSearchButton />
                 <FavoritesNavButton />
                 <AccountMenu overlay />
               </div>
@@ -101,6 +104,7 @@ export function StoreHero() {
             <div className="ml-auto flex items-center gap-8">
               <StoreNav />
               <div className="flex items-center gap-5">
+                <SiteSearchButton />
                 <FavoritesNavButton />
                 <AccountMenu overlay />
               </div>
@@ -129,10 +133,11 @@ export function StoreHero() {
         className="sticky top-0 z-50 hidden border-y border-current/10 px-5 shadow-sm backdrop-blur-xl lg:block lg:px-8"
         style={{ backgroundColor: menuBgColor, color: contrastText(menuBgColor) }}
       >
-        <div className="mx-auto grid min-h-14 w-full max-w-[1440px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
+        <div className="mx-auto grid min-h-14 w-full max-w-[1440px] grid-cols-[minmax(0,1fr)_auto_minmax(max-content,1fr)] items-center gap-3">
           <div aria-hidden="true" />
           <StoreNav />
           <div className="flex items-center justify-end gap-5">
+            <SiteSearchButton iconOnly />
             <FavoritesNavButton />
             <AccountMenu overlay />
           </div>

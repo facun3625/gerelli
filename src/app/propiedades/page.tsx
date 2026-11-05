@@ -13,7 +13,7 @@ import { PropertySearchForm } from "@/components/estate/property-search-form";
 import { ViewToggle, toResultsQueryString } from "@/components/estate/view-toggle";
 import { estatePropertyFilterOptions } from "@/lib/estate/data";
 import { parseCatalogFilters, buildPublishedPropertyWhere } from "@/lib/estate/catalog-filters";
-import { getCatalogFilterSettings, getCatalogFilterLabels } from "@/lib/estate/catalog-filter-settings";
+import { getPublicCatalogFilters, getCatalogFilterLabels } from "@/lib/estate/catalog-filter-settings";
 
 // Con filtros en la URL igual apunta a /propiedades: así Google no indexa
 // cada combinación de filtros como una página distinta.
@@ -34,7 +34,7 @@ export default async function PropiedadesPage({
 
   const page = Math.max(1, Math.min(10000, Math.floor(Number(search.page)) || 1));
   const [enabledFilters, filterLabels, filterOptions, storeSettings] = await Promise.all([
-    getCatalogFilterSettings(tenant.id),
+    getPublicCatalogFilters(tenant.id),
     getCatalogFilterLabels(tenant.id),
     estatePropertyFilterOptions(tenant.id, { publishedOnly: true }),
     getStoreSettings(tenant.id),
@@ -44,6 +44,7 @@ export default async function PropiedadesPage({
     cities: filterOptions.cities,
     neighborhoods: filterOptions.neighborhoods,
   });
+  const hasFilters = Object.values(filters).some((value) => value !== undefined && value !== "");
   const session = await auth();
   const propertyWhere = buildPublishedPropertyWhere(tenant.id, filters);
   const [properties, totalCount, favoriteIds] = await Promise.all([
@@ -93,7 +94,7 @@ export default async function PropiedadesPage({
         <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-5 px-4 py-7 text-center sm:px-6 lg:px-8">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-primary">Catálogo</p>
-            <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">Resultados de búsqueda</h1>
+            <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">{hasFilters ? "Resultados de búsqueda" : "Todas las propiedades"}</h1>
           </div>
           <PropertySearchForm
             enabledKeys={enabledFilters}

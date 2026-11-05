@@ -60,7 +60,7 @@ export function MailComposer({
   audience: { subscribers: number; withContacts: number };
   myEmail: string;
   signature: string;
-  initial: { mode: Mode; propertyIds: string[]; contactId: string | null };
+  initial: { mode: Mode; propertyIds: string[]; contactId: string | null; email: string; name: string };
 }) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -84,7 +84,7 @@ export function MailComposer({
   });
   const [ctaUrl, setCtaUrl] = useState(`${brand.siteUrl}/propiedades`);
   const [touched, setTouched] = useState<Set<TextField>>(new Set());
-  const [recipient, setRecipient] = useState({ email: initialContact?.email ?? "", name: initialContact?.name ?? "" });
+  const [recipient, setRecipient] = useState({ email: initialContact?.email ?? initial.email, name: initialContact?.name ?? initial.name });
   const [contactKey, setContactKey] = useState(0);
   const [includeContacts, setIncludeContacts] = useState(true);
   const [query, setQuery] = useState("");

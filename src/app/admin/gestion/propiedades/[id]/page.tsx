@@ -8,6 +8,7 @@ import { RecordForm } from "@/components/estate/record-form";
 import { SectionNav } from "@/components/estate/section-nav";
 import { getMercadoLibreSettings } from "@/lib/mercadolibre/settings";
 import { MercadoLibrePanel } from "./mercadolibre-panel";
+import { PropertyQrCard } from "./property-qr-card";
 
 const NAV_ITEMS = [
   { id: "section-publicacion", label: "Publicación", icon: <TextIcon className="size-4" /> },
@@ -92,6 +93,12 @@ export default async function EditarPropiedadPage({
           />
         </section>
       </div>
+      <PropertyQrCard
+        tenantId={tenant.id}
+        propertyId={record.id}
+        code={String(record.values.code ?? record.id)}
+        published={record.values.published === true}
+      />
       <MercadoLibrePanel
         propertyId={record.id}
         connected={mlSettings.connected}

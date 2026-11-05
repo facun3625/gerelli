@@ -3,6 +3,7 @@ import { Search, SlidersHorizontal } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SuggestInput } from "@/components/search/suggest-input";
 import { CATALOG_FILTER_LABELS, type CatalogFilterKey } from "@/lib/estate/catalog-filters";
 
 // Búsqueda exacta, no "mínimo" — quien busca 1 dormitorio quiere 1, no
@@ -92,13 +93,15 @@ export function PropertySearchForm({
     q: (
       <div className="flex min-w-0 flex-1 items-center gap-2.5 px-5 py-2">
         <Search className="size-5 shrink-0 text-muted-foreground" />
-        <input
+        <SuggestInput
+          endpoint="/api/search/suggest"
           name="q"
           form={SEARCH_FORM_ID}
-          aria-label="Ciudad, barrio o propiedad"
+          ariaLabel="Ciudad, barrio o propiedad"
           placeholder="Ciudad, barrio o propiedad"
           defaultValue={values.q}
-          className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+          portal
+          className="min-w-0 flex-1 bg-transparent pr-6 text-base outline-none placeholder:text-muted-foreground"
         />
       </div>
     ),
@@ -201,7 +204,7 @@ export function PropertySearchForm({
     >
       <div className="grid min-w-0 flex-1 gap-1 sm:grid-cols-2 lg:flex lg:items-stretch lg:gap-0 lg:divide-x lg:divide-border">
         {inlineKeys.map((key) => (
-          <div key={key} className="flex min-w-0 flex-1 rounded-xl bg-muted/35 lg:rounded-none lg:bg-transparent">
+          <div key={key} className={`flex min-w-0 flex-1 rounded-xl bg-muted/35 lg:rounded-none lg:bg-transparent ${key === "q" ? "lg:flex-[2.4]" : ""}`}>
             {fieldByKey[key]}
           </div>
         ))}

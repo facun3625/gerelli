@@ -9,7 +9,7 @@ import { PropertySearchForm } from "@/components/estate/property-search-form";
 import { ViewToggle, toResultsQueryString } from "@/components/estate/view-toggle";
 import { estatePropertyFilterOptions } from "@/lib/estate/data";
 import { parseCatalogFilters, buildPublishedPropertyWhere } from "@/lib/estate/catalog-filters";
-import { getCatalogFilterSettings, getCatalogFilterLabels } from "@/lib/estate/catalog-filter-settings";
+import { getPublicCatalogFilters, getCatalogFilterLabels } from "@/lib/estate/catalog-filter-settings";
 
 export const metadata = {
   title: "Propiedades en el mapa",
@@ -27,7 +27,7 @@ export default async function MapaPage({
   const search = await searchParams;
 
   const [enabledFilters, filterOptions, filterLabels] = await Promise.all([
-    getCatalogFilterSettings(tenant.id),
+    getPublicCatalogFilters(tenant.id),
     estatePropertyFilterOptions(tenant.id, { publishedOnly: true }),
     getCatalogFilterLabels(tenant.id),
   ]);

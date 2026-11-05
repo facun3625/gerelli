@@ -67,6 +67,7 @@ export function MobileHamburgerMenu() {
                 : []),
               { href: "/sobre-nosotros", label: "Sobre nosotros" },
               { href: "/arquitectura", label: "Arquitectura", children: ARQ_SECTIONS },
+              { href: "/propiedades", label: "Ver todas las propiedades" },
               { href: "/mapa", label: "Propiedades en mapa" },
               { href: "/alertas", label: "Recibir alertas" },
               { href: "#hablemos-hoy", label: "Contacto" },

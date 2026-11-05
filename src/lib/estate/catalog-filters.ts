@@ -106,6 +106,8 @@ export function buildPublishedPropertyWhere(
             { title: { contains: filters.q, mode: "insensitive" as const } },
             { city: { contains: filters.q, mode: "insensitive" as const } },
             { neighborhood: { contains: filters.q, mode: "insensitive" as const } },
+            { propertyType: { contains: filters.q, mode: "insensitive" as const } },
+            { code: { contains: filters.q, mode: "insensitive" as const } },
           ],
         }
       : {}),

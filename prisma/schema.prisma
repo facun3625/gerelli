@@ -24,6 +24,8 @@ model Tenant {
   valuations             EstateValuation[]
   contacts               EstateContact[]
   properties             EstateProperty[]
+  priceAlerts            EstatePriceAlert[]
+  qrVisits               EstateQrVisit[]
   developments           EstateDevelopment[]
   developmentCategories  EstateDevelopmentCategory[]
   developmentInquiries   EstateDevelopmentInquiry[]
@@ -475,10 +477,53 @@ model EstateProperty {
   maintenance    EstateMaintenance[]
   favorites      EstatePropertyFavorite[]
   pageViews      EstatePageView[]
+  priceAlerts    EstatePriceAlert[]
+  qrVisits       EstateQrVisit[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, code])
   @@index([tenantId, published, city])
+}
+
+// «Avisarme si baja el precio». No se guarda si "ya bajó": se compara
+// baselinePrice contra el precio actual de la oferta al leer la lista, así
+// cuenta cualquier camino por el que cambie el precio. Al avisarle a la
+// persona, baselinePrice pasa a ser el precio actual.
+model EstatePriceAlert {
+  id            String         @id @default(cuid())
+  tenantId      String
+  propertyId    String
+  operation     String
+  currency      String
+  baselinePrice Decimal        @db.Decimal(16, 2)
+  name          String
+  phone         String
+  email         String
+  notifiedAt    DateTime?
+  createdAt     DateTime       @default(now())
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property      EstateProperty @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([propertyId, operation, email])
+  @@index([tenantId, createdAt])
+}
+
+// Una persona entró a una propiedad escaneando su QR (ver /qr/[id]).
+model EstateQrVisit {
+  id         String         @id @default(cuid())
+  tenantId   String
+  propertyId String
+  firstName  String
+  lastName   String
+  phone      String
+  handledAt  DateTime?
+  createdAt  DateTime       @default(now())
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property   EstateProperty @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId, handledAt])
+  @@index([tenantId, createdAt])
+  @@index([propertyId])
 }
 
 // Navegación anónima del sitio público. visitorId es una cookie aleatoria

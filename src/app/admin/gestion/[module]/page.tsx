@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SuggestInput } from "@/components/search/suggest-input";
 import { notFound } from "next/navigation";
 import {
   ArrowUpRight,
@@ -83,6 +84,9 @@ const inquiryDate = new Intl.DateTimeFormat("es-AR", {
   hour12: false,
   timeZone: "America/Argentina/Buenos_Aires",
 });
+
+// Secciones con buscador predictivo (ver /api/admin/search).
+const SUGGEST_SCOPES = ["propiedades", "clientes", "consultas", "contratos"];
 
 export default async function EstateModulePage({
   params,
@@ -323,14 +327,25 @@ export default async function EstateModulePage({
         {module === "consultas" && <><input type="hidden" name="channel" value={filters.channel} /><FilterSelect name="assignedAgentId" label="Todos los responsables" value={filters.assignedAgentId} options={[{ value: "unassigned", label: "Sin asignar" }, ...options.inquiryAgents.map((agent) => ({ value: agent.id, label: agent.label }))]} /></>}
         <div className="flex max-w-md gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
-            <input
-              aria-label="Buscar registros"
-              name="q"
-              defaultValue={q}
-              placeholder="Buscar…"
-              className="w-full rounded-xl border bg-card py-2.5 pl-10 pr-3 text-sm"
-            />
+            <Search className="absolute left-3 top-3 z-10 size-4 text-muted-foreground" />
+            {SUGGEST_SCOPES.includes(module) ? (
+              <SuggestInput
+                endpoint={`/api/admin/search?scope=${module}`}
+                ariaLabel="Buscar registros"
+                name="q"
+                defaultValue={q}
+                placeholder="Buscar…"
+                className="w-full rounded-xl border bg-card py-2.5 pl-10 pr-7 text-sm"
+              />
+            ) : (
+              <input
+                aria-label="Buscar registros"
+                name="q"
+                defaultValue={q}
+                placeholder="Buscar…"
+                className="w-full rounded-xl border bg-card py-2.5 pl-10 pr-3 text-sm"
+              />
+            )}
           </div>
           <button className="rounded-xl border px-4 text-sm">Buscar</button>
         </div>

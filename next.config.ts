@@ -56,7 +56,8 @@ const nextConfig: NextConfig = {
     // Next 16 aplica además un buffer de 10 MB en proxy. Debe coincidir con
     // el límite de Server Actions o un multipart grande llega truncado y
     // Busboy responde "Unexpected end of form".
-    proxyClientMaxBodySize: "20mb",
+    // 55 MB por el video de portada (/api/admin/cover-video, hasta 50 MB).
+    proxyClientMaxBodySize: "55mb",
     // Default de Next es 1MB — una foto de celular (comprobante de
     // transferencia, foto de producto) lo pasa fácil. Tiene que ir de la
     // mano con el client_max_body_size de Nginx (ver README).

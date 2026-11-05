@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PhotoBanner } from "@/components/catalog/photo-banner";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import {
@@ -92,31 +93,7 @@ export default async function SobreNosotrosPage() {
     <div className="public-inner-page public-content-page flex flex-1 flex-col">
       <StoreHero />
 
-      <section className="relative h-[clamp(15rem,32vw,20rem)] overflow-hidden bg-foreground">
-        {coverUrl ? (
-          <Image
-            src={coverUrl}
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-primary to-foreground" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
-        <div className="relative mx-auto flex h-full w-full max-w-[1440px] items-end px-4 pb-8 sm:px-6 lg:px-8 lg:pb-12">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[.3em] text-white/70">
-              Nuestra historia
-            </p>
-            <h1 className="mt-2 text-3xl font-bold text-white sm:text-4xl">
-              Sobre {storeName}
-            </h1>
-          </div>
-        </div>
-      </section>
+      <PhotoBanner image={coverUrl} eyebrow="Nuestra historia" title={`Sobre ${storeName}`} />
 
       {(publishedCount > 0 || saleCount > 0 || rentCount > 0) && (
         <section className="bg-primary">

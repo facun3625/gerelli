@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/table";
 import { WhatsAppIcon } from "@/components/catalog/social-icons";
 import { toWhatsAppMessageLink } from "@/lib/social-links";
+import { getStoreSettings, getWhatsappTemplates } from "@/lib/settings";
+import { renderWhatsappTemplate } from "@/lib/whatsapp-templates";
 import type { Prisma } from "@/generated/prisma/client";
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" });
@@ -37,6 +39,7 @@ export default async function AdminConversacionesPage({
   searchParams: Promise<{ f?: string; page?: string }>;
 }) {
   const { tenant } = await requireTenantAdmin();
+  const [{ storeName }, whatsappTemplates] = await Promise.all([getStoreSettings(tenant.id), getWhatsappTemplates(tenant.id)]);
   const params = await searchParams;
   const filter: Filter = (["contact", "handled"] as const).find((f) => f === params.f) ?? "all";
   const page = Math.max(1, Number(params.page) || 1);
@@ -122,7 +125,7 @@ export default async function AdminConversacionesPage({
                 {c.phone ? (
                   isLikelyPhone(c.phone) ? (
                     <a
-                      href={toWhatsAppMessageLink(c.phone, `Hola ${c.name ?? ""}! Te escribimos por la consulta que hiciste en el chat.`)}
+                      href={toWhatsAppMessageLink(c.phone, renderWhatsappTemplate(whatsappTemplates.aiConversation, { nombre: c.name ?? "", inmobiliaria: storeName }))}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:underline dark:text-emerald-400"

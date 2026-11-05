@@ -19,6 +19,7 @@ import { DevelopmentMapLoader } from "@/components/estate/development-map-loader
 import { money, labels } from "@/lib/estate/modules";
 import { toWhatsAppMessageLink } from "@/lib/social-links";
 import type { Metadata } from "next";
+import { PriceAlertButton } from "@/components/estate/price-alert-button";
 import { jsonLdScript, propertyJsonLd, propertySeoDescription, propertySeoTitle, shareImageUrl } from "@/lib/seo";
 async function getProperty(id: string) {
   const tenant = await getCurrentTenant();
@@ -121,6 +122,13 @@ export default async function PropertyPage({
   const host = hdrs.get("host");
   const protocol = host?.includes("localhost") || host?.includes("127.0.0.1") ? "http" : "https";
   const shareUrl = `${protocol}://${host}/propiedades/${p.id}`;
+  // Sin precio publicado no hay contra qué avisar una baja.
+  const priceAlertOffers = p.listings
+    .filter((l) => l.showPrice && l.price && Number(l.price) > 0)
+    .map((l) => ({
+      operation: l.operation,
+      label: `${l.temporary ? "Alquiler temporario" : labels[l.operation]}: ${money(l.price!, l.currency)}`,
+    }));
   return (
     <div className="public-inner-page public-detail-page flex flex-1 flex-col">
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(propertyJsonLd(p, storeSettings))} />
@@ -261,6 +269,11 @@ export default async function PropertyPage({
                   </div>
                 ))}
               </div>
+              {priceAlertOffers.length > 0 && (
+                <div className="mb-4">
+                  <PriceAlertButton propertyId={p.id} offers={priceAlertOffers} />
+                </div>
+              )}
               <InquiryForm propertyId={p.id} />
             </aside>
           </div>

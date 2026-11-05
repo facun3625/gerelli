@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
+  BellRingIcon,
+  QrCodeIcon,
   LayoutDashboardIcon,
   ClipboardListIcon,
   CreditCardIcon,
@@ -75,6 +77,18 @@ const sections: Section[] = [
     href: "/admin/gestion/busquedas",
     label: "Búsquedas guardadas",
     icon: SearchIcon,
+    group: "Gestión Inmobiliaria",
+  },
+  {
+    href: "/admin/gestion/avisos-precio",
+    label: "Avisarme si baja el precio",
+    icon: BellRingIcon,
+    group: "Gestión Inmobiliaria",
+  },
+  {
+    href: "/admin/gestion/aperturas-qr",
+    label: "Aperturas de QR",
+    icon: QrCodeIcon,
     group: "Gestión Inmobiliaria",
   },
   {
@@ -164,12 +178,16 @@ export function AdminSidebar({
   newInquiryCount = 0,
   newDevelopmentInquiryCount = 0,
   newAiConversationCount = 0,
+  priceDropCount = 0,
+  newQrVisitCount = 0,
   agentPermissions,
 }: {
   onNavigate?: () => void;
   newInquiryCount?: number;
   newDevelopmentInquiryCount?: number;
   newAiConversationCount?: number;
+  priceDropCount?: number;
+  newQrVisitCount?: number;
   agentPermissions?: AgentPermissions;
 }) {
   const { storeName, logoUrl } = useStoreSettings();
@@ -319,7 +337,11 @@ export function AdminSidebar({
                             ? newDevelopmentInquiryCount
                             : s.href === "/admin/conversaciones"
                               ? newAiConversationCount
-                              : 0;
+                              : s.href === "/admin/gestion/avisos-precio"
+                                ? priceDropCount
+                                : s.href === "/admin/gestion/aperturas-qr"
+                                  ? newQrVisitCount
+                                  : 0;
                       if (count <= 0) return null;
                       return (
                         <span

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { MenuIcon, StoreIcon, ChevronDownIcon, MoonIcon, SunIcon, BellIcon, MessageSquareTextIcon } from "lucide-react";
+import { MenuIcon, StoreIcon, ChevronDownIcon, MoonIcon, SunIcon, BellIcon, MessageSquareTextIcon, SearchIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { useAdminTheme } from "@/components/admin/admin-theme-root";
+import { SuggestInput } from "@/components/search/suggest-input";
 
 function initials(name?: string | null) {
   if (!name) return "?";
@@ -30,9 +31,9 @@ function initials(name?: string | null) {
     .join("");
 }
 
-export type AdminNotification = { id: string; type: "INQUIRY" | "DEVELOPMENT_INQUIRY" | "AI_CONVERSATION"; title: string; detail: string; href: string; createdAt: string };
+export type AdminNotification = { id: string; type: "INQUIRY" | "DEVELOPMENT_INQUIRY" | "AI_CONVERSATION" | "PRICE_DROP" | "QR_VISIT"; title: string; detail: string; href: string; createdAt: string };
 
-export function AdminTopbar({ newInquiryCount = 0, newDevelopmentInquiryCount = 0, newAiConversationCount = 0, notificationCount = 0, notifications = [] }: { newInquiryCount?: number; newDevelopmentInquiryCount?: number; newAiConversationCount?: number; notificationCount?: number; notifications?: AdminNotification[] }) {
+export function AdminTopbar({ newInquiryCount = 0, newDevelopmentInquiryCount = 0, newAiConversationCount = 0, priceDropCount = 0, newQrVisitCount = 0, notificationCount = 0, notifications = [] }: { newInquiryCount?: number; newDevelopmentInquiryCount?: number; newAiConversationCount?: number; priceDropCount?: number; newQrVisitCount?: number; notificationCount?: number; notifications?: AdminNotification[] }) {
   const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { containerRef, theme, toggleTheme } = useAdminTheme();
@@ -45,10 +46,10 @@ export function AdminTopbar({ newInquiryCount = 0, newDevelopmentInquiryCount = 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-72 gap-0 p-0" showCloseButton={false} container={containerRef}>
           <SheetTitle className="sr-only">Menú</SheetTitle>
-          <AdminSidebar onNavigate={() => setMobileOpen(false)} newInquiryCount={newInquiryCount} newDevelopmentInquiryCount={newDevelopmentInquiryCount} newAiConversationCount={newAiConversationCount} />
+          <AdminSidebar onNavigate={() => setMobileOpen(false)} newInquiryCount={newInquiryCount} newDevelopmentInquiryCount={newDevelopmentInquiryCount} newAiConversationCount={newAiConversationCount} priceDropCount={priceDropCount} newQrVisitCount={newQrVisitCount} />
         </SheetContent>
       </Sheet>
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <Button
           variant="outline"
           size="icon"
@@ -58,6 +59,15 @@ export function AdminTopbar({ newInquiryCount = 0, newDevelopmentInquiryCount = 
         >
           <MenuIcon />
         </Button>
+        <div className="relative flex w-full max-w-md items-center">
+          <SearchIcon className="pointer-events-none absolute left-3 z-10 size-4 text-muted-foreground" />
+          <SuggestInput
+            endpoint="/api/admin/search"
+            ariaLabel="Buscar en el panel"
+            placeholder="Buscar propiedades, clientes, consultas…"
+            className="w-full rounded-full border bg-background py-2 pl-9 pr-7 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
       </div>
 
       <div className="flex items-center gap-2">

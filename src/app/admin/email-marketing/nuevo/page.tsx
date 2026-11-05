@@ -12,7 +12,7 @@ import { MailComposer } from "./mail-composer";
 export default async function NuevoMailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ modo?: string; propiedad?: string; contacto?: string }>;
+  searchParams: Promise<{ modo?: string; propiedad?: string; contacto?: string; para?: string; nombre?: string }>;
 }) {
   const { tenant, session } = await requireTenantAdmin();
   const params = await searchParams;
@@ -57,7 +57,7 @@ export default async function NuevoMailPage({
         audience={{ subscribers: subscribers.length, withContacts: withContacts.length }}
         myEmail={session.user.email ?? settings.email ?? ""}
         signature={`Saludos,\n${userName === "Usuario del panel" ? settings.storeName : `${userName}\n${settings.storeName}`}`}
-        initial={{ mode, propertyIds, contactId: params.contacto ?? null }}
+        initial={{ mode, propertyIds, contactId: params.contacto ?? null, email: params.para ?? "", name: params.nombre ?? "" }}
       />
     </div>
   );

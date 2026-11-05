@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight, Building2, MapPin, Phone } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
@@ -8,8 +7,9 @@ import { StoreHero } from "@/components/catalog/store-hero";
 import { StoreFooter } from "@/components/catalog/store-footer";
 import { PropertyCard } from "@/components/estate/property-card";
 import { PropertySearchForm } from "@/components/estate/property-search-form";
+import { CoverMedia } from "@/components/catalog/cover-media";
 import { estatePropertyFilterOptions } from "@/lib/estate/data";
-import { getCatalogFilterSettings, getCatalogFilterLabels } from "@/lib/estate/catalog-filter-settings";
+import { getPublicCatalogFilters, getCatalogFilterLabels } from "@/lib/estate/catalog-filter-settings";
 import { contrastText } from "@/lib/contrast-color";
 
 const FEATURED_TAKE = 8;
@@ -22,7 +22,7 @@ export async function EstateCatalog({ tenantId }: { tenantId: string }) {
   const session = await auth();
   const [enabledFilters, filterLabels, filterOptions, settings, properties, favoriteIds] =
     await Promise.all([
-    getCatalogFilterSettings(tenantId),
+    getPublicCatalogFilters(tenantId),
     getCatalogFilterLabels(tenantId),
     estatePropertyFilterOptions(tenantId, { publishedOnly: true }),
     getStoreSettings(tenantId),
@@ -81,32 +81,36 @@ export async function EstateCatalog({ tenantId }: { tenantId: string }) {
     return (
       <div className="flex flex-1 flex-col bg-[#f3f1ec]">
         <StoreHero />
-        <section className="relative isolate min-h-[640px] overflow-hidden bg-neutral-900 text-white lg:min-h-[700px]">
-          {settings.coverUrl ? (
-            <Image src={settings.coverUrl} alt="" fill priority sizes="100vw" className="-z-20 object-cover" />
-          ) : (
-            <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_75%_30%,rgba(255,255,255,.18),transparent_34%),linear-gradient(135deg,var(--primary),#111827)]" />
-          )}
-          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/85 via-black/55 to-black/15" />
-          <div className="mx-auto flex min-h-[640px] w-full max-w-[1440px] flex-col justify-end px-4 pb-10 pt-20 sm:px-6 lg:min-h-[700px] lg:px-8 lg:pb-14">
-            <div className="public-enter max-w-4xl">
-              <p className="text-xs font-semibold uppercase tracking-[.28em] text-white/70">Propiedades para tu próxima etapa</p>
-              <h1 className="mt-5 max-w-3xl text-[clamp(3rem,7vw,6.8rem)] font-bold leading-[.88] tracking-[-.055em]">
-                Encontrá tu lugar.
-              </h1>
-              <p className="mt-6 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
-                Venta, alquiler y oportunidades elegidas para acompañar la forma en la que querés vivir.
-              </p>
-            </div>
-            <div className="public-enter public-enter-delay-1 mt-10 max-w-6xl rounded-[1.75rem] bg-white/95 p-2 text-neutral-950 shadow-2xl backdrop-blur-md">
-              {searchForm}
-            </div>
-            {hasContactInfo && (
-              <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/75">
-                {settings.address && <span className="flex items-center gap-2"><MapPin className="size-4" />{settings.address}</span>}
-                {settings.phone && <span className="flex items-center gap-2"><Phone className="size-4" />{settings.phone}</span>}
-              </div>
+        <section>
+          <div className="relative h-[clamp(16rem,42vw,34rem)] overflow-hidden bg-neutral-200">
+            {settings.coverUrl || settings.coverVideoUrl ? (
+              <CoverMedia videoUrl={settings.coverVideoUrl} imageUrl={settings.coverUrl} />
+            ) : (
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,var(--primary),#111)]" />
             )}
+          </div>
+          {/* El texto va en una raya de color debajo de la foto, sin oscurecerla. */}
+          <div style={{ backgroundColor: settings.menuBgColor, color: contrastText(settings.menuBgColor) }}>
+            <div className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+              <div className="public-enter max-w-4xl">
+                <p className="text-xs font-semibold uppercase tracking-[.28em] opacity-75">Propiedades para tu próxima etapa</p>
+                <h1 className="mt-3 max-w-3xl text-[clamp(2.2rem,5vw,4.5rem)] font-bold leading-[.95] tracking-[-.04em]">
+                  Encontrá tu lugar.
+                </h1>
+                <p className="mt-4 max-w-xl text-base leading-relaxed opacity-85 sm:text-lg">
+                  Venta, alquiler y oportunidades elegidas para acompañar la forma en la que querés vivir.
+                </p>
+              </div>
+              <div className="public-enter public-enter-delay-1 mt-7 max-w-6xl rounded-[1.75rem] bg-white/95 p-2 text-neutral-950 shadow-2xl backdrop-blur-md">
+                {searchForm}
+              </div>
+              {hasContactInfo && (
+                <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm opacity-85">
+                  {settings.address && <span className="flex items-center gap-2"><MapPin className="size-4" />{settings.address}</span>}
+                  {settings.phone && <span className="flex items-center gap-2"><Phone className="size-4" />{settings.phone}</span>}
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
@@ -164,9 +168,9 @@ export async function EstateCatalog({ tenantId }: { tenantId: string }) {
                 )}
               </div>
             </div>
-            {settings.coverUrl && (
+            {(settings.coverUrl || settings.coverVideoUrl) && (
               <div className="public-enter-side-right relative mt-14 aspect-[16/7] min-h-[280px] overflow-hidden bg-neutral-100">
-                <Image src={settings.coverUrl} alt="" fill priority sizes="100vw" className="object-cover" />
+                <CoverMedia videoUrl={settings.coverVideoUrl} imageUrl={settings.coverUrl} />
               </div>
             )}
             <div className="mt-10 border-y border-neutral-200 py-5">{searchForm}</div>
@@ -251,15 +255,8 @@ export async function EstateCatalog({ tenantId }: { tenantId: string }) {
           )}
         </div>
         <div className="public-enter-side-right public-enter-delay-1 relative hidden overflow-hidden bg-primary/10 lg:block">
-          {settings.coverUrl ? (
-            <Image
-              src={settings.coverUrl}
-              alt=""
-              fill
-              priority
-              sizes="50vw"
-              className="object-cover"
-            />
+          {settings.coverUrl || settings.coverVideoUrl ? (
+            <CoverMedia videoUrl={settings.coverVideoUrl} imageUrl={settings.coverUrl} sizes="50vw" />
           ) : (
             <div className="flex h-full items-center justify-center">
               <Building2 className="size-20 text-primary/30" />

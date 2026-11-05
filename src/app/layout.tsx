@@ -99,7 +99,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     );
   }
 
-  const showAiWidget = !pathname.startsWith("/admin") && !pathname.startsWith("/agente");
+  const showAiWidget = !pathname.startsWith("/admin") && !pathname.startsWith("/agente") && !pathname.startsWith("/qr/");
   const [storeSettings, assistantStatus] = await Promise.all([
     getStoreSettings(tenant.id),
     showAiWidget ? getAssistantStatus(tenant.id) : Promise.resolve(null),

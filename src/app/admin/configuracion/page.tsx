@@ -15,7 +15,10 @@ import { SmtpSettingsForm } from "./smtp-settings-form";
 import { getSmtpSettings } from "@/lib/smtp-settings";
 import { listBackups, MAX_BACKUPS } from "@/lib/backup";
 
-const VALID_TABS = new Set(["popup", "seo", "telegram", "ia", "mercadolibre", "correo", "backups"]);
+import { WhatsappTemplatesForm } from "./whatsapp-templates-form";
+import { getWhatsappTemplates } from "@/lib/settings";
+
+const VALID_TABS = new Set(["popup", "seo", "telegram", "ia", "mercadolibre", "correo", "whatsapp", "backups"]);
 
 const backupDate = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "full",
@@ -81,6 +84,9 @@ export default async function ConfiguracionPage({
           <TabsTrigger value="correo" className="flex-1">
             Correo
           </TabsTrigger>
+          <TabsTrigger value="whatsapp" className="flex-1">
+            WhatsApp
+          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="backups" className="flex-1">
               Copias de seguridad
@@ -122,6 +128,10 @@ export default async function ConfiguracionPage({
 
         <TabsContent value="correo">
           <SmtpSettingsForm key={JSON.stringify(smtpSettings)} settings={smtpSettings} myEmail={session.user.email ?? ""} />
+        </TabsContent>
+
+        <TabsContent value="whatsapp">
+          <WhatsappTemplatesForm templates={await getWhatsappTemplates(tenant.id)} />
         </TabsContent>
 
         {isAdmin && (

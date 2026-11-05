@@ -1,4 +1,5 @@
 import { inquiryChannelFor } from "@/lib/estate/inquiry-channels";
+import { getDroppedPriceAlerts } from "@/lib/estate/price-alerts";
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 
@@ -46,7 +47,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     prisma.estateAiConversation.findMany({where:{tenantId:tenant.id,phone:{not:null},handledAt:null},orderBy:{lastMessageAt:"desc"},take:5}),
   ]);
 
+  const [droppedAlerts, newQrVisitCount, recentQrVisits] = await Promise.all([
+    getDroppedPriceAlerts(tenant.id),
+    prisma.estateQrVisit.count({where:{tenantId:tenant.id,handledAt:null}}),
+    prisma.estateQrVisit.findMany({where:{tenantId:tenant.id,handledAt:null},include:{property:{select:{title:true}}},orderBy:{createdAt:"desc"},take:5}),
+  ]);
+  const priceDropCount = droppedAlerts.length;
+
   const notifications: AdminNotification[] = [
+    ...recentQrVisits.map(item=>({id:item.id,type:"QR_VISIT" as const,title:`Abrió el QR: ${item.firstName} ${item.lastName}`,detail:item.property.title,href:"/admin/gestion/aperturas-qr",createdAt:item.createdAt.toISOString()})),
+    ...droppedAlerts.slice(0,5).map(item=>({id:item.id,type:"PRICE_DROP" as const,title:`Avisar baja de precio: ${item.name}`,detail:item.property.title,href:"/admin/gestion/avisos-precio",createdAt:(item.notifiedAt ?? item.createdAt).toISOString()})),
     ...recentInquiries.map(item=>({id:item.id,type:"INQUIRY" as const,title:"Nueva consulta inmobiliaria",detail:item.contact.name,href:`/admin/gestion/consultas?channel=${inquiryChannelFor(item)}&edit=${item.id}`,createdAt:item.createdAt.toISOString()})),
     ...recentDevelopmentInquiries.map(item=>{
       const answers = item.answers as unknown as { label: string; value: string }[];
@@ -66,6 +76,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 newInquiryCount={newInquiryCount}
                 newDevelopmentInquiryCount={newDevelopmentInquiryCount}
                 newAiConversationCount={newAiConversationCount}
+                priceDropCount={priceDropCount}
+                newQrVisitCount={newQrVisitCount}
                 agentPermissions={session.user.role === "AGENT" ? permissions : undefined}
               />
             </aside>
@@ -74,7 +86,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 newInquiryCount={newInquiryCount}
                 newDevelopmentInquiryCount={newDevelopmentInquiryCount}
                 newAiConversationCount={newAiConversationCount}
-                notificationCount={newInquiryCount + newDevelopmentInquiryCount + newAiConversationCount}
+                priceDropCount={priceDropCount}
+                newQrVisitCount={newQrVisitCount}
+                notificationCount={newInquiryCount + newDevelopmentInquiryCount + newAiConversationCount + priceDropCount + newQrVisitCount}
                 notifications={notifications}
               />
               <main className="flex-1 min-h-0 overflow-y-auto px-4 py-6 lg:px-8 print:p-0">{children}</main>

@@ -1,11 +1,15 @@
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import { WHATSAPP_TEMPLATE_IDS, WHATSAPP_TEMPLATES, type WhatsappTemplates } from "@/lib/whatsapp-templates";
 
 export type StoreSettings = {
   storeName: string;
   logoUrl: string | null;
   footerLogoUrl: string | null;
   coverUrl: string | null;
+  // Video de la portada del Inicio (MP4). Si hay, reemplaza a la foto, que
+  // queda como imagen de espera mientras carga.
+  coverVideoUrl: string | null;
   faviconUrl: string | null;
   address: string | null;
   city: string | null;
@@ -63,6 +67,7 @@ const SETTINGS_KEYS = [
   "store_logo_url",
   "store_footer_logo_url",
   "store_cover_url",
+  "store_cover_video_url",
   "store_favicon_url",
   "store_address",
   "store_city",
@@ -103,6 +108,7 @@ export const getStoreSettings = cache(
       logoUrl: map.store_logo_url || null,
       footerLogoUrl: map.store_footer_logo_url || null,
       coverUrl: map.store_cover_url || null,
+      coverVideoUrl: map.store_cover_video_url || null,
       faviconUrl: map.store_favicon_url || null,
       address: map.store_address || null,
       city: map.store_city || null,
@@ -265,3 +271,13 @@ export const getAiAssistantSettings = cache(
     };
   },
 );
+
+export const getWhatsappTemplates = cache(async (tenantId: string): Promise<WhatsappTemplates> => {
+  const rows = await prisma.settings.findMany({
+    where: { tenantId, key: { in: WHATSAPP_TEMPLATE_IDS.map((id) => WHATSAPP_TEMPLATES[id].key) } },
+  });
+  const map = new Map(rows.map((r) => [r.key, r.value]));
+  return Object.fromEntries(
+    WHATSAPP_TEMPLATE_IDS.map((id) => [id, map.get(WHATSAPP_TEMPLATES[id].key) || WHATSAPP_TEMPLATES[id].default]),
+  ) as WhatsappTemplates;
+});

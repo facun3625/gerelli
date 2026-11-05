@@ -23,17 +23,26 @@ export function StoreNav() {
   ];
   const after = [
     ...(hasServices ? [{ href: "/servicios", label: "Servicios" }] : []),
-    { href: "/mapa", label: "Propiedades en mapa" },
-    { href: "/alertas", label: "Recibir alertas" },
+    { href: "/propiedades", label: "Ver todas las propiedades", short: "Propiedades" },
+    { href: "/mapa", label: "Propiedades en mapa", short: "Mapa" },
+    { href: "/alertas", label: "Recibir alertas", short: "Alertas" },
     { href: "#hablemos-hoy", label: "Contacto" },
   ];
-  const renderLink = (link: { href: string; label: string }) => (
+  // En pantallas angostas el menú no entra con los nombres largos.
+  const renderLink = (link: { href: string; label: string; short?: string }) => (
     <Link
       key={link.href}
       href={link.href}
       className={cn(linkClass, isActive(link.href) && "border-current font-semibold opacity-100")}
     >
-      {link.label}
+      {link.short ? (
+        <>
+          <span className="hidden min-[1240px]:inline">{link.label}</span>
+          <span className="min-[1240px]:hidden">{link.short}</span>
+        </>
+      ) : (
+        link.label
+      )}
     </Link>
   );
 

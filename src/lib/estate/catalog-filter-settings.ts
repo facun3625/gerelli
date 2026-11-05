@@ -20,6 +20,13 @@ export async function getCatalogFilterSettings(tenantId: string): Promise<Catalo
   return row.value.split(",").filter((key): key is CatalogFilterKey => CATALOG_FILTER_KEYS.includes(key as CatalogFilterKey));
 }
 
+// Lo que usa el sitio público: el buscador de texto va siempre, es el
+// predictivo y no depende de qué filtros se hayan tildado.
+export async function getPublicCatalogFilters(tenantId: string): Promise<CatalogFilterKey[]> {
+  const keys = await getCatalogFilterSettings(tenantId);
+  return keys.includes("q") ? keys : ["q", ...keys];
+}
+
 // Texto de la opción "sin elegir" de cada select del buscador (ej.
 // "Ciudad", "Operación") — por default es CATALOG_FILTER_LABELS, pero el
 // admin lo puede reescribir desde /admin/pagina (ver CatalogFiltersForm).
