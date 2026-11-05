@@ -5,6 +5,7 @@ import { getCurrentTenant } from "@/lib/tenant";
 import { getAiAssistantSettings } from "@/lib/settings";
 import { buildAssistantInstructions } from "@/lib/ai-agent/prompt";
 import { runAssistantProvider } from "@/lib/ai-agent/provider";
+import { getCatalogSummary } from "@/lib/ai-agent/tools";
 import { DEFAULT_AI_MODELS } from "@/lib/ai-agent/types";
 import { parseAssistantRequest } from "@/lib/ai-agent/validation";
 import { isRateLimited, recordFailure, clientIp, type RateLimitRule } from "@/lib/rate-limit";
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
     const reply = await runAssistantProvider(settings.provider, tenant.id, {
       apiKey: settings.apiKey,
       model,
-      instructions: buildAssistantInstructions(settings.instructions),
+      instructions: buildAssistantInstructions(settings.instructions, await getCatalogSummary(tenant.id)),
       history,
     });
     // Para medir la demora desde pm2 logs: grep "estate-ai chat ok".

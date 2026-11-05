@@ -8,7 +8,8 @@ import { RecordForm } from "@/components/estate/record-form";
 import { SectionNav } from "@/components/estate/section-nav";
 import { getMercadoLibreSettings } from "@/lib/mercadolibre/settings";
 import { MercadoLibrePanel } from "./mercadolibre-panel";
-import { PropertyQrCard } from "./property-qr-card";
+import { PropertyQrButton } from "./property-qr-button";
+import { PropertyQrDetails } from "./property-qr-card";
 
 const NAV_ITEMS = [
   { id: "section-publicacion", label: "Publicación", icon: <TextIcon className="size-4" /> },
@@ -36,6 +37,15 @@ export default async function EditarPropiedadPage({
     }),
   ]);
   if (!record) notFound();
+
+  const qrDetails = (
+    <PropertyQrDetails
+      tenantId={tenant.id}
+      propertyId={record.id}
+      code={String(record.values.code ?? record.id)}
+      published={record.values.published === true}
+    />
+  );
 
   return (
     <div className="space-y-6">
@@ -82,7 +92,7 @@ export default async function EditarPropiedadPage({
         </div>
       </div>
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[210px_1fr]">
-        <SectionNav items={NAV_ITEMS} />
+        <SectionNav items={NAV_ITEMS} extra={<PropertyQrButton>{qrDetails}</PropertyQrButton>} />
         <section className="min-w-0 rounded-2xl border bg-card p-5 sm:p-7">
           <RecordForm
             module="propiedades"
@@ -93,12 +103,7 @@ export default async function EditarPropiedadPage({
           />
         </section>
       </div>
-      <PropertyQrCard
-        tenantId={tenant.id}
-        propertyId={record.id}
-        code={String(record.values.code ?? record.id)}
-        published={record.values.published === true}
-      />
+      <section className="rounded-2xl border bg-card p-5 sm:p-7">{qrDetails}</section>
       <MercadoLibrePanel
         propertyId={record.id}
         connected={mlSettings.connected}

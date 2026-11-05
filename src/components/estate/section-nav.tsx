@@ -42,7 +42,7 @@ function animateScrollTo(container: HTMLElement, targetTop: number, duration = 4
   requestAnimationFrame(step);
 }
 
-export function SectionNav({ items }: { items: NavItem[] }) {
+export function SectionNav({ items, extra }: { items: NavItem[]; extra?: ReactNode }) {
   const [active, setActive] = useState(items[0]?.id);
   // Mientras el usuario clickeó un ítem del nav, el observer se ignora: si
   // no, las secciones intermedias que cruzan el margen mientras dura la
@@ -124,6 +124,7 @@ export function SectionNav({ items }: { items: NavItem[] }) {
       {/* RecordForm monta acá (portal) una copia del botón de guardar, así
           queda a mano mientras se scrollea la ficha. */}
       <div id={SECTION_NAV_ACTIONS_ID} className="mt-3 hidden lg:block" />
+      {extra && <div className="mt-1 hidden lg:block">{extra}</div>}
     </nav>
   );
 }
