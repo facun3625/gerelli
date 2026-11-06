@@ -7,7 +7,7 @@ export const FAQ_CATEGORIES: { icon: LucideIcon; title: string; questions: [stri
     questions: [
       ["¿Cómo busco una propiedad?", "Desde Propiedades podés filtrar por operación, tipo, zona y precio para encontrar lo que buscás."],
       ["¿La información de precio y estado está actualizada?", "Sí, el equipo mantiene el catálogo actualizado a medida que cambia la disponibilidad de cada propiedad."],
-      ["¿Puedo guardar propiedades que me interesan?", "Sí, con tu cuenta podés marcar propiedades como favoritas y crear alertas de búsqueda para recibir avisos de nuevas publicaciones."],
+      ["¿Puedo guardar propiedades que me interesan?", "Sí, podés marcar propiedades como favoritas y crear alertas de búsqueda para recibir avisos de nuevas publicaciones."],
     ],
   },
   {
@@ -33,7 +33,7 @@ export const FAQ_CATEGORIES: { icon: LucideIcon; title: string; questions: [stri
     title: "Contacto",
     questions: [
       ["¿Cómo contacto al equipo?", "Usá el formulario de Contacto o escribinos por WhatsApp desde cualquier página del sitio."],
-      ["¿Necesito una cuenta para consultar?", "No, podés consultar sin registrarte. Una cuenta te permite además guardar favoritos y alertas."],
+      ["¿Necesito una cuenta para consultar?", "No, podés consultar sin ninguna cuenta. También podés guardar favoritos y crear alertas sin registrarte."],
     ],
   },
 ];

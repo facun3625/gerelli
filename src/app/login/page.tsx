@@ -23,8 +23,8 @@ export default async function LoginPage({
         {/* Header */}
         <div className="flex flex-col items-center gap-3 bg-muted/40 px-6 py-7 text-center">
           {logoUrl && (
-            <div className="flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-border">
-              <Image src={logoUrl} alt={storeName} width={56} height={56} className="size-full object-contain" />
+            <div className="rounded-xl bg-white px-3 py-2">
+              <Image src={logoUrl} alt={storeName} width={220} height={64} className="h-16 w-auto max-w-[220px] object-contain" />
             </div>
           )}
           <div className="flex flex-col items-center gap-0.5">

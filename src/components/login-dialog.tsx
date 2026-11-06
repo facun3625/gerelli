@@ -14,7 +14,6 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useLoginDialog } from "@/lib/login-dialog-context";
 import { useStoreSettings } from "@/lib/store-settings-context";
@@ -24,10 +23,10 @@ type Screen = "auth" | "forgot" | "forgot-sent";
 
 /* ─── Floating label input ─── */
 function FloatingInput({
-  id, label, type = "text", required, value, onChange, minLength,
+  id, label, type = "text", required, value, onChange,
 }: {
   id: string; label: string; type?: string; required?: boolean;
-  value: string; onChange: (v: string) => void; minLength?: number;
+  value: string; onChange: (v: string) => void;
 }) {
   const [focused, setFocused] = useState(false);
   const lifted = focused || value.length > 0;
@@ -49,7 +48,6 @@ function FloatingInput({
         id={id}
         type={type}
         required={required}
-        minLength={minLength}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setFocused(true)}
@@ -73,10 +71,6 @@ export function LoginDialog() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
-  const [registerName, setRegisterName] = useState("");
-  const [registerEmail, setRegisterEmail] = useState("");
-  const [registerPassword, setRegisterPassword] = useState("");
-
   const [forgotEmail, setForgotEmail] = useState("");
 
   function handleClose() {
@@ -86,9 +80,6 @@ export function LoginDialog() {
       setScreen("auth");
       setLoginEmail("");
       setLoginPassword("");
-      setRegisterName("");
-      setRegisterEmail("");
-      setRegisterPassword("");
       setForgotEmail("");
     }, 300);
   }
@@ -105,35 +96,6 @@ export function LoginDialog() {
     setLoading(false);
     if (result?.error) {
       toast.error("Email o contraseña incorrectos");
-      return;
-    }
-    handleClose();
-    router.refresh();
-  }
-
-  async function handleRegister(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: registerName, email: registerEmail, password: registerPassword }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setLoading(false);
-      toast.error(data.error ?? "No se pudo crear la cuenta");
-      return;
-    }
-    const result = await signIn("credentials", {
-      email: registerEmail,
-      password: registerPassword,
-      tenantId,
-      redirect: false,
-    });
-    setLoading(false);
-    if (result?.error) {
-      toast.error("Cuenta creada, pero no se pudo iniciar sesión");
       return;
     }
     handleClose();
@@ -178,8 +140,8 @@ export function LoginDialog() {
           )}
 
           {logoUrl && (
-            <div className="flex size-20 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-border">
-              <Image src={logoUrl} alt={storeName} width={80} height={80} className="size-full object-contain" />
+            <div className="rounded-xl bg-white px-3 py-2">
+              <Image src={logoUrl} alt={storeName} width={220} height={64} className="h-16 w-auto max-w-[220px] object-contain" />
             </div>
           )}
 
@@ -202,49 +164,25 @@ export function LoginDialog() {
 
           {/* ── PANTALLA: auth ── */}
           {screen === "auth" && (
-            <>
-              <Tabs defaultValue="login">
-                <TabsList className="grid w-full grid-cols-2 rounded-xl">
-                  <TabsTrigger value="login" className="rounded-lg">Ingresar</TabsTrigger>
-                  <TabsTrigger value="register" className="rounded-lg">Crear cuenta</TabsTrigger>
-                </TabsList>
-
-                {/* Login */}
-                <TabsContent value="login">
-                  <form onSubmit={handleLogin} className="flex flex-col gap-3 pt-1">
-                    <FloatingInput id="dlg-login-email" label="Email" type="email" required value={loginEmail} onChange={setLoginEmail} />
-                    <div className="flex flex-col gap-1.5">
-                      <FloatingInput id="dlg-login-password" label="Contraseña" type="password" required value={loginPassword} onChange={setLoginPassword} />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForgotEmail(loginEmail);
-                          setScreen("forgot");
-                        }}
-                        className="self-end text-xs text-muted-foreground"
-                      >
-                        ¿Olvidaste tu contraseña?
-                      </button>
-                    </div>
-                    <Button type="submit" disabled={loading} size="lg" className="mt-1 w-full rounded-full">
-                      {loading ? "Ingresando..." : "Ingresar"}
-                    </Button>
-                  </form>
-                </TabsContent>
-
-                {/* Registro */}
-                <TabsContent value="register">
-                  <form onSubmit={handleRegister} className="flex flex-col gap-3 pt-1">
-                    <FloatingInput id="dlg-register-name" label="Nombre" required value={registerName} onChange={setRegisterName} />
-                    <FloatingInput id="dlg-register-email" label="Email" type="email" required value={registerEmail} onChange={setRegisterEmail} />
-                    <FloatingInput id="dlg-register-password" label="Contraseña" type="password" required minLength={6} value={registerPassword} onChange={setRegisterPassword} />
-                    <Button type="submit" disabled={loading} size="lg" className="mt-1 w-full rounded-full">
-                      {loading ? "Creando cuenta..." : "Crear cuenta"}
-                    </Button>
-                  </form>
-                </TabsContent>
-              </Tabs>
-            </>
+            <form onSubmit={handleLogin} className="flex flex-col gap-3">
+              <FloatingInput id="dlg-login-email" label="Email" type="email" required value={loginEmail} onChange={setLoginEmail} />
+              <div className="flex flex-col gap-1.5">
+                <FloatingInput id="dlg-login-password" label="Contraseña" type="password" required value={loginPassword} onChange={setLoginPassword} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotEmail(loginEmail);
+                    setScreen("forgot");
+                  }}
+                  className="self-end text-xs text-muted-foreground"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
+              <Button type="submit" disabled={loading} size="lg" className="mt-1 w-full rounded-full">
+                {loading ? "Ingresando..." : "Ingresar"}
+              </Button>
+            </form>
           )}
 
           {/* ── PANTALLA: forgot ── */}

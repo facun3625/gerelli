@@ -40,8 +40,7 @@ export function LocalFavoritesList() {
           Todavía no guardaste ninguna propiedad
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Tocá el corazón en cualquier propiedad para guardarla acá. Si te registrás después,
-          quedan guardadas en tu cuenta.
+          Tocá el corazón en cualquier propiedad para guardarla acá.
         </p>
       </div>
     );

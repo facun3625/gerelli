@@ -18,11 +18,9 @@ export const LOGIN_RULE: RateLimitRule = { limit: 10, windowMinutes: 15 };
 // legítimamente compartida (oficina, wifi público, NAT del celular).
 export const LOGIN_IP_RULE: RateLimitRule = { limit: 40, windowMinutes: 15 };
 
-// Acciones que mandan mail o crean cuentas: el riesgo no es adivinar nada,
-// es que alguien las use para inundar de mails a un tercero o llenar la
-// base de cuentas basura.
+// Acciones que mandan mail: el riesgo no es adivinar nada, es que alguien las
+// use para inundar de mails a un tercero.
 export const EMAIL_RULE: RateLimitRule = { limit: 5, windowMinutes: 60 };
-export const REGISTER_RULE: RateLimitRule = { limit: 10, windowMinutes: 60 };
 
 function windowStart(rule: RateLimitRule) {
   return new Date(Date.now() - rule.windowMinutes * 60 * 1000);

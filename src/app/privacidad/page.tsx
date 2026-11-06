@@ -17,7 +17,7 @@ export default async function PrivacyPage() {
   const settings = await getStoreSettings(tenant.id);
 
   const sections: [string, string][] = [
-    ["Qué información tratamos", `Tratamos los datos de contacto que nos dejás (nombre, email, teléfono) cuando consultás por una propiedad, pedís una visita, te registrás o usás el portal de inquilinos/propietarios de ${settings.storeName}.`],
+    ["Qué información tratamos", `Tratamos los datos de contacto que nos dejás (nombre, email, teléfono) cuando consultás por una propiedad, pedís una visita o usás el portal de inquilinos/propietarios de ${settings.storeName}.`],
     ["Para qué la usamos", "Usamos esa información para responder tus consultas, coordinar visitas, gestionar contratos y cobranzas cuando corresponde, y para enviarte comunicaciones relacionadas con tus operaciones."],
     ["Con quién la compartimos", "No vendemos tus datos. Podemos compartir información puntual con proveedores que nos ayudan a operar el sitio (hosting, envío de mails, almacenamiento de imágenes), bajo condiciones de confidencialidad."],
     ["Conservación y seguridad", "Conservamos tu información mientras sea necesaria para la relación comercial y aplicamos medidas razonables de seguridad para protegerla."],
