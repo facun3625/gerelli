@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-// Alguien logueado (por Google o credenciales) que todavía no tiene tienda
+// Alguien logueado que todavía no tiene tienda
 // propia — está en algún paso de /registro. Un CUSTOMER de una tienda real
 // tiene tenantId seteado y no cae acá.
 //

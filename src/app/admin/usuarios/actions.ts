@@ -1,17 +1,13 @@
 "use server";
 
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { ActionError, toUserError } from "@/lib/action-error";
 import { prisma } from "@/lib/prisma";
 import { requireTenantAdmin } from "@/lib/require-admin";
 import { logActivity } from "@/lib/activity-log";
-import { createPasswordResetToken } from "@/lib/password-reset";
-import { getStoreSettings } from "@/lib/settings";
-import { sendMail } from "@/lib/mailer";
-import { adminInviteEmail } from "@/lib/email-templates";
 import type { Role } from "@/generated/prisma/client";
 
 export async function setUserRole(id: string, role: Role) {
@@ -71,68 +67,41 @@ async function runDeleteUser(id: string) {
   return { ok: true as const };
 }
 
-const inviteAdminSchema = z.object({
-  name: z.string().trim().max(200).optional(),
-  email: z.email().trim().toLowerCase(),
+const createAdminSchema = z.object({
+  name: z.string().trim().min(1, "Ingresá el nombre").max(200),
+  email: z.email("Ingresá un email válido").trim().toLowerCase(),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").max(72, "La contraseña es demasiado larga"),
 });
 
-// Crea un admin directo, sin que la persona se registre antes — reusa el
-// mismo mecanismo de "restablecer contraseña" (VerificationToken +
-// /restablecer-contrasena) en vez de armar un sistema de invitación aparte:
-// el usuario nace sin passwordHash (igual que uno logueado solo con Google)
-// y ese link es la única forma de ponerle una contraseña por primera vez.
-export async function inviteAdmin(form: FormData) {
+// Crea el administrador listo para entrar: el email es su usuario de acceso.
+export async function createAdmin(form: FormData) {
   try {
-    return await runInviteAdmin(form);
+    return await runCreateAdmin(form);
   } catch (err) {
-    return toUserError(err, "No se pudo invitar al administrador");
+    return toUserError(err, "No se pudo crear el usuario");
   }
 }
 
-async function runInviteAdmin(form: FormData) {
-  const { tenant } = await requireTenantAdmin();
-  const parsed = inviteAdminSchema.safeParse({
+async function runCreateAdmin(form: FormData) {
+  const { session, tenant } = await requireTenantAdmin();
+  const parsed = createAdminSchema.safeParse({
     name: form.get("name"),
     email: form.get("email"),
+    password: form.get("password"),
   });
-  if (!parsed.success) throw new ActionError("Ingresá un email válido");
-  const { name, email } = parsed.data;
+  if (!parsed.success) throw new ActionError(parsed.error.issues[0].message);
+  const { name, email, password } = parsed.data;
 
   const existing = await prisma.user.findUnique({
     where: { tenantId_email: { tenantId: tenant.id, email } },
   });
-  if (existing) throw new ActionError("Ya hay un usuario con ese email en esta tienda");
+  if (existing) throw new ActionError("Ya hay un usuario con ese email");
 
-  await prisma.user.create({
-    data: { tenantId: tenant.id, name: name || null, email, role: "ADMIN" },
+  const user = await prisma.user.create({
+    data: { tenantId: tenant.id, name, email, role: "ADMIN", passwordHash: await bcrypt.hash(password, 10) },
   });
-  await logActivity(tenant.id, { entity: "usuarios", action: "INVITE", summary: `Invitó como administrador a ${email}` });
-
-  const token = await createPasswordResetToken(tenant.id, email);
-  const hdrs = await headers();
-  const host = hdrs.get("host");
-  // OJO: el mismo chequeo en recuperar-contrasena/actions.ts usa startsWith,
-  // que falla para un subdominio de tenant en local (demo-inmo.localhost no
-  // empieza con "localhost") — acá va con includes para no heredar eso.
-  const protocol = host?.includes("localhost") || host?.includes("127.0.0.1") ? "http" : "https";
-  const inviteUrl = `${protocol}://${host}/restablecer-contrasena?email=${encodeURIComponent(email)}&token=${token}`;
-
-  try {
-    const storeSettings = await getStoreSettings(tenant.id);
-    await sendMail({
-      tenantId: tenant.id,
-      to: email,
-      subject: `Te invitaron a administrar ${storeSettings.storeName}`,
-      html: adminInviteEmail({ storeName: storeSettings.storeName, inviteUrl }),
-      type: "ADMIN_INVITE",
-    });
-  } catch (e) {
-    // El usuario ya quedó creado y el link es válido igual — si el mail no
-    // sale (por ejemplo, sin Resend configurado en esta plataforma), el
-    // link que devolvemos abajo es el respaldo para compartir a mano.
-    console.error("No se pudo enviar el mail de invitación", e);
-  }
+  await logActivity(tenant.id, { entity: "usuarios", entityId: user.id, action: "CREATE", summary: `Creó al administrador ${email}` }, { user: session.user });
 
   revalidatePath("/admin/usuarios");
-  return { ok: true as const, inviteUrl };
+  return { ok: true as const };
 }

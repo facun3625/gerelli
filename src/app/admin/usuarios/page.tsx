@@ -15,7 +15,7 @@ import {
 import type { Role } from "@/generated/prisma/client";
 import { UsersFilterBar } from "./users-filter-bar";
 import { UserRoleToggle, UserDeleteButton } from "./user-row-actions";
-import { InviteAdminDialog } from "./invite-admin-dialog";
+import { CreateAdminDialog } from "./create-admin-dialog";
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" });
 const PAGE_SIZE = 30;
@@ -66,7 +66,7 @@ export default async function UsersPage({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Usuarios</h1>
-        <InviteAdminDialog />
+        <CreateAdminDialog />
       </div>
 
       <UsersFilterBar />

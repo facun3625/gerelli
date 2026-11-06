@@ -188,8 +188,7 @@ Cosas que ya están resueltas y conviene no romper sin querer:
 El login es un tema delicado acá porque conviven tres dominios distintos
 (raíz, subdominio de tienda, dominio propio del cliente). Antes de tocar
 `src/auth.ts`, `src/auth.config.ts`, `src/lib/auth-adapter.ts` o `src/proxy.ts`,
-leé los comentarios largos que ya están ahí: explican por qué las cookies de
-OAuth son host-only, por qué Google siempre vuelve al dominio raíz, y cómo
+leé los comentarios largos que ya están ahí: explican cómo
 funciona el "pase efímero" de un solo uso que mueve una sesión del dominio raíz
 al subdominio de la tienda.
 

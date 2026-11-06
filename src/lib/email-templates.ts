@@ -274,27 +274,6 @@ export function paymentReminderEmail({
   `;
 }
 
-export function adminInviteEmail({
-  storeName,
-  inviteUrl,
-}: {
-  storeName: string;
-  inviteUrl: string;
-}) {
-  return `
-    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1a;">
-      <h1 style="font-size: 20px;">Te invitaron a administrar ${escapeHtml(storeName)}</h1>
-      <p>Ya te dieron acceso como administrador de <strong>${escapeHtml(storeName)}</strong>. Elegí tu contraseña para entrar:</p>
-      <p style="margin: 24px 0;">
-        <a href="${inviteUrl}" style="background: #1a1a1a; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; display: inline-block;">
-          Crear mi contraseña
-        </a>
-      </p>
-      <p style="color: #666; font-size: 13px;">El link vence en 1 hora. Si no esperabas esta invitación, podés ignorar este mail.</p>
-    </div>
-  `;
-}
-
 export function passwordResetEmail({ storeName, resetUrl }: { storeName: string; resetUrl: string }) {
   return `
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1a;">
