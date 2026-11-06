@@ -1,3 +1,4 @@
+import { WORDPRESS_REDIRECTS } from "./src/lib/wordpress-redirects";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -50,6 +51,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/emprendimientos", destination: "/arquitectura/obras", permanent: true },
       { source: "/emprendimientos/:id", destination: "/arquitectura/obras/:id", permanent: true },
+      ...WORDPRESS_REDIRECTS,
     ];
   },
   experimental: {
