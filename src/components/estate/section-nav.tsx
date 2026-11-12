@@ -105,7 +105,7 @@ export function SectionNav({ items, extra }: { items: NavItem[]; extra?: ReactNo
   }
 
   return (
-    <nav className="sticky top-6 flex flex-col gap-1">
+    <nav className="flex flex-col gap-1 lg:sticky lg:top-6">
       {items.map((item) => (
         <a
           key={item.id}

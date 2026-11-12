@@ -187,7 +187,7 @@ export const modules: Record<string, Module> = {
         name: "images",
         label: "Fotografías",
         type: "file",
-        hint: "JPG, PNG o WEBP. Hasta 10 imágenes nuevas de 8 MB cada una; 18 MB por envío. La primera foto es la portada — reordená o borrá las existentes con los controles de cada miniatura.",
+        hint: "JPG, PNG o WEBP. Hasta 10 imágenes nuevas de 8 MB cada una; 18 MB por envío. La primera foto es la portada — arrastrá las miniaturas para ordenarlas.",
       },
       {
         name: "floorPlanUrl",

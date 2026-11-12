@@ -30,9 +30,12 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+// Montserrat es variable: sin `weight` se pide un solo archivo con todos los
+// grosores. Con la lista de pesos, Google devuelve el mismo archivo repetido
+// para cada uno y Turbopack 16.3 falla al resolverlo ("next/font/google
+// queries have exactly one entry"), lo que rompía el build del deploy.
 const montserrat = Montserrat({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
 });
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
